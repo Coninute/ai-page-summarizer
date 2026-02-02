@@ -12,33 +12,40 @@
     }
 
     body {
-      width: 380px;
+      width: 420px;
       padding: 20px;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-      background: #f8f9fa;
+      background: #f0f7ff;
       color: #333;
+      border: 0;
     }
 
     .header {
       text-align: center;
       margin-bottom: 20px;
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(100, 181, 246, 0.2);
+      border: 1px solid #e3f2fd;
     }
 
     .header h1 {
       font-size: 18px;
-      color: #2c3e50;
+      color: #64b5f6;
       margin-bottom: 5px;
+      font-weight: 600;
     }
 
     .header p {
-      font-size: 12px;
-      color: #7f8c8d;
+      font-size: 13px;
+      color: #90a4ae;
     }
 
     .button-container {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
       margin-bottom: 20px;
     }
 
@@ -50,62 +57,104 @@
       font-weight: 500;
       cursor: pointer;
       transition: all 0.2s ease;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     }
 
+    .btn:hover {
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    }
+
+    .btn:active {
+      transform: translateY(1px);
+    }
+
+    /* 总结按钮 */
     .btn-primary {
-      background: #3498db;
+      background: #64b5f6;
       color: white;
+      padding: 14px 16px;
+      font-size: 15px;
     }
 
     .btn-primary:hover {
-      background: #2980b9;
+      background: #42a5f5;
     }
 
     .btn-primary:disabled {
-      background: #95a5a6;
+      background: #b0bec5;
       cursor: not-allowed;
+      transform: none;
     }
 
+    /* 下载按钮，独占一行 */
     .btn-success {
-      background: #27ae60;
+      background: #81c784;
       color: white;
       display: none;
+      grid-column: span 2;
+      padding: 12px 20px;
     }
 
     .btn-success:hover {
-      background: #219a52;
+      background: #66bb6a;
     }
 
+    /* 次要按钮 */
     .btn-secondary {
-      background: #667eea;
-      color: white;
+      background: white;
+      color: #64b5f6;
+      padding: 11px 16px;
     }
 
     .btn-secondary:hover {
-      background: #5568d3;
+      background: #e3f2fd;
     }
 
-    .status {
-      text-align: center;
-      padding: 10px;
-      border-radius: 6px;
+    /* 预览按钮 */
+    .btn-preview {
+      background: #90caf9;
+      color: white;
+      padding: 10px 14px;
       font-size: 13px;
       display: none;
     }
 
+    .btn-preview:hover {
+      background: #64b5f6;
+    }
+
+    /* 选中预览按钮，独占一行 */
+    #previewSelectedBtn {
+      grid-column: span 2;
+    }
+
+    /* 隐藏元素 */
+    .hidden {
+      display: none !important;
+    }
+
+    .status {
+      text-align: center;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      display: none;
+      box-shadow: 0 1px 3px rgba(100, 181, 246, 0.15);
+    }
+
     .status.info {
       background: #e3f2fd;
-      color: #1976d2;
+      color: #64b5f6;
     }
 
     .status.success {
       background: #e8f5e9;
-      color: #388e3c;
+      color: #81c784;
     }
 
     .status.error {
       background: #ffebee;
-      color: #d32f2f;
+      color: #e57373;
     }
 
     .loading {
@@ -127,8 +176,8 @@
     .footer {
       text-align: center;
       margin-top: 20px;
-      font-size: 11px;
-      color: #95a5a6;
+      font-size: 12px;
+      color: #90a4ae;
     }
 
     .preview {
@@ -156,6 +205,99 @@
       line-height: 1.5;
       word-wrap: break-word;
     }
+
+    .markdown-content {
+      white-space: pre-wrap;
+      font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    }
+
+    .markdown-content h1 {
+      font-size: 16px;
+      font-weight: bold;
+      color: #2c3e50;
+      margin: 10px 0 5px 0;
+    }
+
+    .markdown-content h2 {
+      font-size: 14px;
+      font-weight: bold;
+      color: #34495e;
+      margin: 8px 0 4px 0;
+    }
+
+    .markdown-content ul {
+      margin: 5px 0;
+      padding-left: 20px;
+    }
+
+    .markdown-content li {
+      margin: 3px 0;
+    }
+
+    .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+
+    .modal-content {
+      background: white;
+      border-radius: 12px;
+      width: 90%;
+      max-width: 600px;
+      max-height: 80vh;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(100, 181, 246, 0.2);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 20px;
+      background: #64b5f6;
+      border-bottom: 1px solid #e3f2fd;
+    }
+
+    .modal-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: white;
+    }
+
+    .modal-close {
+      font-size: 24px;
+      color: rgba(255, 255, 255, 0.9);
+      cursor: pointer;
+      line-height: 1;
+      user-select: none;
+      transition: color 0.2s ease;
+    }
+
+    .modal-close:hover {
+      color: white;
+    }
+
+    .modal-body {
+      padding: 20px;
+      max-height: calc(80vh - 70px);
+      overflow-y: auto;
+    }
+
+    .modal-text {
+      font-size: 14px;
+      color: #555;
+      line-height: 1.6;
+      word-wrap: break-word;
+      white-space: pre-wrap;
+    }
   </style>
 </head>
 <body>
@@ -165,15 +307,38 @@
   </div>
 
   <div class="button-container">
-    <button id="selectElementBtn" class="btn btn-secondary">选择元素进行总结</button>
-    <button id="cancelSelectionBtn" class="btn btn-secondary" style="display: none; background: #e74c3c;">取消选择</button>
     <button id="summarizeBtn" class="btn btn-primary">总结当前网页内容</button>
+    <button id="selectElementBtn" class="btn btn-secondary">选择元素进行总结</button>
+    <button id="cancelSelectionBtn" class="btn btn-secondary" style="display: none; background: #e57373; color: white;">取消选择</button>
+    <button id="previewSelectedBtn" class="btn btn-preview">预览选中的内容</button>
+    <button id="previewSummaryBtn" class="btn btn-preview">预览总结结果</button>
     <button id="downloadBtn" class="btn btn-success">下载为 .md 文件</button>
   </div>
 
-  <div id="preview" class="preview" style="display: none;">
-    <div class="preview-header">选中的内容预览</div>
-    <div id="previewContent" class="preview-content"></div>
+  <!-- 选中的内容弹框 -->
+  <div id="selectedContentModal" class="modal" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <span class="modal-title">选中的内容预览</span>
+        <span class="modal-close" id="closeSelectedModal">&times;</span>
+      </div>
+      <div class="modal-body">
+        <div id="selectedContentText" class="modal-text"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 总结结果弹框 -->
+  <div id="summaryModal" class="modal" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <span class="modal-title">总结结果预览</span>
+        <span class="modal-close" id="closeSummaryModal">&times;</span>
+      </div>
+      <div class="modal-body">
+        <div id="summaryContent" class="modal-text markdown-content"></div>
+      </div>
+    </div>
   </div>
 
   <div id="status" class="status"></div>

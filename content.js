@@ -122,11 +122,12 @@ function createSelectionBox() {
       top: 20px;
       left: 50%;
       transform: translateX(-50%);
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
+      background: white;
+      color: #333;
       padding: 16px 24px;
       border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      box-shadow: 0 2px 8px rgba(100, 181, 246, 0.2);
+      border: 1px solid #e3f2fd;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
       font-size: 14px;
       font-weight: 500;
@@ -148,6 +149,7 @@ function createSelectionBox() {
       font-size: 14px;
       line-height: 1.4;
       font-weight: 600;
+      color: #64b5f6;
     `;
     container.appendChild(textElement);
 
@@ -165,7 +167,7 @@ function createSelectionBox() {
     closeButton.style.cssText = `
       background: transparent;
       border: none;
-      color: white;
+      color: #90a4ae;
       font-size: 20px;
       cursor: pointer;
       opacity: 0.8;
@@ -331,7 +333,7 @@ function handleMouseOver(e) {
     // 高亮元素
     highlightElement(hoveredElement);
 
-    // 更新状态提示框
+    // 提取内容并更新状态提示框
     const text = hoveredElement.innerText || hoveredElement.textContent || '';
     const tagName = hoveredElement.tagName.toLowerCase();
     const className = hoveredElement.className || '';
@@ -345,6 +347,21 @@ function handleMouseOver(e) {
     statusMessage += '\n单击即可直接总结';
 
     updateStatusBox(statusMessage, 'info');
+
+    // 发送预览消息到 popup（如果 popup 打开的话）
+    try {
+      chrome.runtime.sendMessage({
+        action: 'elementPreview',
+        content: text
+      }, (response) => {
+        // popup 可能关闭了，忽略错误
+        if (chrome.runtime.lastError) {
+          console.log('popup 已关闭，不显示预览');
+        }
+      });
+    } catch (err) {
+      console.log('发送预览消息失败:', err);
+    }
   } catch (error) {
     console.error('处理鼠标悬停失败:', error);
   }

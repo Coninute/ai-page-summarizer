@@ -22,110 +22,27 @@ const selectElementBtn = document.getElementById('selectElementBtn');
 const cancelSelectionBtn = document.getElementById('cancelSelectionBtn');
 const summarizeBtn = document.getElementById('summarizeBtn');
 const downloadBtn = document.getElementById('downloadBtn');
+const previewSelectedBtn = document.getElementById('previewSelectedBtn');
+const previewSummaryBtn = document.getElementById('previewSummaryBtn');
 const statusEl = document.getElementById('status');
-const previewEl = document.getElementById('preview');
-const previewContentEl = document.getElementById('previewContent');
 
-// 继续总结按钮（当 popup 关闭后重新打开时使用）
-let continueSummarizeBtn = null;
+// Modal 元素
+const selectedContentModal = document.getElementById('selectedContentModal');
+const summaryModal = document.getElementById('summaryModal');
+const selectedContentText = document.getElementById('selectedContentText');
+const summaryContentEl = document.getElementById('summaryContent');
+const closeSelectedModal = document.getElementById('closeSelectedModal');
+const closeSummaryModal = document.getElementById('closeSummaryModal');
+
+// 存储预览内容
+let selectedContent = '';
+let summaryResult = '';
 
 // 标记是否在选择模式
 let isSelectionMode = false;
 
-// 存储预览的内容
-let previewContent = '';
-
 // 存储选中的元素内容
 let selectedElementContent = '';
-
-// 检查是否有缓存的内容
-async function checkCachedContent() {
-  try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-
-    if (!tab || !tab.id) {
-      console.log('无法获取当前标签页');
-      return;
-    }
-
-    console.log('检查是否有缓存的内容...');
-
-    const response = await chrome.tabs.sendMessage(tab.id, { action: 'getCachedContent' });
-
-    if (response && response.success && response.content) {
-      console.log('发现缓存的内容，长度:', response.content.length);
-
-      // 保存缓存的内容
-      selectedElementContent = response.content;
-
-      // 自动开始总结，不需要用户点击按钮
-      console.log('自动开始总结缓存的内容');
-      showStatus(`自动总结之前选中的内容（${response.content.length} 字符）...`, 'info');
-
-      // 清除缓存
-      await chrome.tabs.sendMessage(tab.id, { action: 'clearCachedContent' });
-
-      // 立即开始总结
-      setTimeout(() => {
-        summarizeSelectedElement(selectedElementContent);
-      }, 500);
-    } else {
-      console.log('没有缓存的内容');
-    }
-  } catch (error) {
-    console.log('检查缓存内容失败（可能是 content script 未加载）:', error);
-  }
-}
-
-// 创建"继续总结"按钮
-function createContinueSummarizeButton() {
-  if (continueSummarizeBtn) {
-    continueSummarizeBtn.remove();
-  }
-
-  continueSummarizeBtn = document.createElement('button');
-  continueSummarizeBtn.id = 'continueSummarizeBtn';
-  continueSummarizeBtn.className = 'btn btn-success';
-  continueSummarizeBtn.textContent = '继续总结（上次选中的内容）';
-  continueSummarizeBtn.style.display = 'block';
-
-  // 插入到按钮容器的第一个位置
-  const buttonContainer = document.querySelector('.button-container');
-  if (buttonContainer) {
-    buttonContainer.insertBefore(continueSummarizeBtn, buttonContainer.firstChild);
-  }
-
-  // 添加点击事件
-  continueSummarizeBtn.addEventListener('click', async () => {
-    try {
-      if (!selectedElementContent || selectedElementContent.length < 10) {
-        throw new Error('选中的内容太短，无法进行总结');
-      }
-
-      console.log('点击继续总结按钮');
-
-      // 清除缓存
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      if (tab && tab.id) {
-        await chrome.tabs.sendMessage(tab.id, { action: 'clearCachedContent' });
-      }
-
-      // 移除按钮
-      if (continueSummarizeBtn) {
-        continueSummarizeBtn.remove();
-        continueSummarizeBtn = null;
-      }
-
-      // 调用总结函数
-      await summarizeSelectedElement(selectedElementContent);
-    } catch (error) {
-      console.error('继续总结失败:', error);
-      showStatus(error.message || '继续总结失败，请重试', 'error');
-    }
-  });
-
-  console.log('继续总结按钮已创建');
-}
 
 // 显示状态信息
 function showStatus(message, type = 'info') {
@@ -141,6 +58,28 @@ function showStatus(message, type = 'info') {
 // 隐藏状态信息
 function hideStatus() {
   statusEl.style.display = 'none';
+}
+
+// 打开选中的内容弹框
+function openSelectedContentModal() {
+  selectedContentText.textContent = selectedContent;
+  selectedContentModal.style.display = 'flex';
+}
+
+// 关闭选中的内容弹框
+function closeSelectedContentModalFn() {
+  selectedContentModal.style.display = 'none';
+}
+
+// 打开总结结果弹框
+function openSummaryModal() {
+  summaryContentEl.textContent = summaryResult;
+  summaryModal.style.display = 'flex';
+}
+
+// 关闭总结结果弹框
+function closeSummaryModalFn() {
+  summaryModal.style.display = 'none';
 }
 
 // 模拟 AI 总结功能
@@ -195,6 +134,16 @@ function downloadMarkdown(content) {
       setTimeout(hideStatus, 2000);
     }
   });
+}
+
+// 从全局变量下载
+function downloadCurrentSummary() {
+  if (summaryResult) {
+    downloadMarkdown(summaryResult);
+  } else {
+    showStatus('请先生成总结内容', 'error');
+    setTimeout(hideStatus, 2000);
+  }
 }
 
 // 调用 API 进行总结
@@ -292,7 +241,148 @@ async function callAPISummarize(text) {
   }
 }
 
-// 总结按钮点击事件
+// 总结选中的元素
+async function summarizeSelectedElement(content) {
+  try {
+    console.log('========== summarizeSelectedElement 开始 ==========');
+    console.log('接收到的内容长度:', content ? content.length : 0);
+    console.log('API 配置:', {
+      useAPI: API_CONFIG.useAPI,
+      hasApiKey: API_CONFIG.apiKey !== 'YOUR_API_KEY_HERE'
+    });
+
+    if (!content || content.length < 10) {
+      throw new Error('选中的内容太短，无法进行总结');
+    }
+
+    // 存储选中的内容
+    selectedContent = content;
+    previewSelectedBtn.style.display = 'block';
+
+    // 根据配置选择使用 API 或 mock
+    let summaryData;
+    if (API_CONFIG.useAPI && API_CONFIG.apiKey !== 'YOUR_API_KEY_HERE') {
+      console.log('使用 API 进行总结');
+      showStatus('正在使用 AI 生成总结...', 'info');
+      try {
+        summaryData = await callAPISummarize(content);
+        console.log('API 总结成功');
+      } catch (apiError) {
+        console.error('API 调用失败，使用 mock 模拟:', apiError);
+        showStatus('API 调用失败，使用本地总结...', 'info');
+        summaryData = mockSummarize(content);
+      }
+    } else {
+      console.log('使用 mock 进行总结');
+      showStatus('正在生成本地总结...', 'info');
+      summaryData = mockSummarize(content);
+    }
+
+    console.log('总结数据:', summaryData);
+
+    // 生成 Markdown
+    const markdown = formatToMarkdown(summaryData);
+    console.log('Markdown 内容生成完成，长度:', markdown.length);
+
+    // 存储总结结果
+    summaryResult = markdown;
+    previewSummaryBtn.style.display = 'block';
+
+    // 两个预览按钮同行显示
+    previewSelectedBtn.style.gridColumn = 'span 1';
+
+    // 保存到全局变量供下载使用
+    window.summaryContent = markdown;
+
+    // 显示下载按钮
+    downloadBtn.style.display = 'block';
+    showStatus('总结生成成功！', 'success');
+
+    // 3秒后隐藏状态
+    setTimeout(hideStatus, 3000);
+
+  } catch (error) {
+    console.error('总结过程中出错:', error);
+    showStatus(error.message || '总结失败，请重试', 'error');
+    setTimeout(hideStatus, 3000);
+  }
+}
+
+// 选择元素按钮点击事件
+selectElementBtn.addEventListener('click', async () => {
+  try {
+    // 获取当前活动标签页
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+
+    if (!tab || !tab.id) {
+      throw new Error('无法获取当前标签页');
+    }
+
+    // 检查是否可以访问页面
+    try {
+      await chrome.tabs.sendMessage(tab.id, { action: 'ping' });
+    } catch (e) {
+      // 如果 content script 未加载，先注入
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ['content.js']
+      });
+    }
+
+    if (!isSelectionMode) {
+      // 开始选择模式
+      await chrome.tabs.sendMessage(tab.id, { action: 'startSelection' });
+
+      // 更新 UI
+      isSelectionMode = true;
+      selectElementBtn.style.display = 'none';
+      cancelSelectionBtn.style.display = 'block';
+      summarizeBtn.disabled = true;
+
+      // 显示提示
+      showStatus('已启动选择模式，请在页面上选择元素', 'info');
+    }
+  } catch (error) {
+    console.error('启动选择模式失败:', error);
+    showStatus('启动选择模式失败: ' + error.message, 'error');
+    setTimeout(hideStatus, 3000);
+  }
+});
+
+// 取消选择按钮点击事件
+cancelSelectionBtn.addEventListener('click', async () => {
+  try {
+    // 获取当前活动标签页
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+
+    if (!tab || !tab.id) {
+      throw new Error('无法获取当前标签页');
+    }
+
+    // 停止选择模式
+    await chrome.tabs.sendMessage(tab.id, { action: 'stopSelection' });
+
+    // 更新 UI
+    isSelectionMode = false;
+    selectElementBtn.style.display = 'block';
+    cancelSelectionBtn.style.display = 'none';
+    summarizeBtn.disabled = false;
+
+    // 隐藏预览和下载按钮
+    previewSelectedBtn.style.display = 'none';
+    previewSummaryBtn.style.display = 'none';
+    downloadBtn.style.display = 'none';
+
+    // 隐藏提示
+    hideStatus();
+  } catch (error) {
+    console.error('取消选择模式失败:', error);
+    showStatus('取消选择模式失败: ' + error.message, 'error');
+    setTimeout(hideStatus, 3000);
+  }
+});
+
+// 总结当前网页按钮点击事件
 summarizeBtn.addEventListener('click', async () => {
   try {
     showStatus('正在提取网页内容...', 'info');
@@ -315,7 +405,7 @@ summarizeBtn.addEventListener('click', async () => {
 
           // 先尝试获取主要内容区域
           const mainSelectors = [
-            'main', 'article', '[role="main"]', 
+            'main', 'article', '[role="main"]',
             '.main-content', '.content', '.article-content',
             '.post-content', '.entry-content', '.article-body',
             '#content', '#main', '#article'
@@ -387,6 +477,10 @@ summarizeBtn.addEventListener('click', async () => {
       throw new Error('提取的内容太短，无法进行总结');
     }
 
+    // 存储选中的内容
+    selectedContent = extractedText;
+    previewSelectedBtn.style.display = 'block';
+
     showStatus('正在生成总结...', 'info');
 
     // 根据配置选择使用 API 或 mock
@@ -403,7 +497,18 @@ summarizeBtn.addEventListener('click', async () => {
       summaryData = mockSummarize(extractedText);
     }
 
-    summaryContent = formatToMarkdown(summaryData);
+    // 生成 Markdown
+    const markdown = formatToMarkdown(summaryData);
+
+    // 存储总结结果
+    summaryResult = markdown;
+    previewSummaryBtn.style.display = 'block';
+
+    // 两个预览按钮同行显示
+    previewSelectedBtn.style.gridColumn = 'span 1';
+
+    // 保存到全局变量供下载使用
+    window.summaryContent = markdown;
 
     // 显示下载按钮
     downloadBtn.style.display = 'block';
@@ -421,109 +526,38 @@ summarizeBtn.addEventListener('click', async () => {
 
 // 下载按钮点击事件
 downloadBtn.addEventListener('click', () => {
-  if (summaryContent) {
-    downloadMarkdown(summaryContent);
-  } else {
-    showStatus('请先生成总结内容', 'error');
-    setTimeout(hideStatus, 2000);
+  downloadCurrentSummary();
+});
+
+// 预览选中内容按钮点击事件
+previewSelectedBtn.addEventListener('click', () => {
+  openSelectedContentModal();
+});
+
+// 预览总结结果按钮点击事件
+previewSummaryBtn.addEventListener('click', () => {
+  openSummaryModal();
+});
+
+// 关闭按钮点击事件
+closeSelectedModal.addEventListener('click', () => {
+  closeSelectedContentModalFn();
+});
+
+closeSummaryModal.addEventListener('click', () => {
+  closeSummaryModalFn();
+});
+
+// 点击模态框背景关闭
+selectedContentModal.addEventListener('click', (e) => {
+  if (e.target === selectedContentModal) {
+    closeSelectedContentModalFn();
   }
 });
 
-// 当 popup 打开时，检查是否有缓存的内容
-document.addEventListener('DOMContentLoaded', () => {
-  console.log('popup 已加载，检查缓存内容...');
-  checkCachedContent();
-});
-
-// 选择元素按钮点击事件
-selectElementBtn.addEventListener('click', async () => {
-  try {
-    // 获取当前活动标签页
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-
-    if (!tab || !tab.id) {
-      throw new Error('无法获取当前标签页');
-    }
-
-    // 检查是否可以访问页面
-    try {
-      await chrome.tabs.sendMessage(tab.id, { action: 'ping' });
-    } catch (e) {
-      // 如果 content script 未加载，先注入
-      await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        files: ['content.js']
-      });
-    }
-
-    if (!isSelectionMode) {
-      // 开始选择模式
-      await chrome.tabs.sendMessage(tab.id, { action: 'startSelection' });
-
-      // 更新 UI
-      isSelectionMode = true;
-      selectElementBtn.style.display = 'none';
-      cancelSelectionBtn.style.display = 'block';
-      summarizeBtn.disabled = true;
-
-      // 显示提示
-      showStatus('已启动选择模式，请在页面上选择元素', 'info');
-    }
-  } catch (error) {
-    console.error('启动选择模式失败:', error);
-    showStatus('启动选择模式失败: ' + error.message, 'error');
-    setTimeout(hideStatus, 3000);
-  }
-});
-
-// 取消选择按钮点击事件
-cancelSelectionBtn.addEventListener('click', async () => {
-  try {
-    // 获取当前活动标签页
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-
-    if (!tab || !tab.id) {
-      throw new Error('无法获取当前标签页');
-    }
-
-    // 停止选择模式
-    await chrome.tabs.sendMessage(tab.id, { action: 'stopSelection' });
-
-    // 更新 UI
-    isSelectionMode = false;
-    selectElementBtn.style.display = 'block';
-    cancelSelectionBtn.style.display = 'none';
-    summarizeBtn.disabled = false;
-
-    // 隐藏提示
-    hideStatus();
-  } catch (error) {
-    console.error('取消选择模式失败:', error);
-    showStatus('取消选择模式失败: ' + error.message, 'error');
-    setTimeout(hideStatus, 3000);
-  }
-});
-
-// 确认总结按钮点击事件
-confirmSummarizeBtn.addEventListener('click', async () => {
-  try {
-    if (!previewContent) {
-      throw new Error('没有选中的内容');
-    }
-
-    // 隐藏预览和确认按钮
-    previewEl.style.display = 'none';
-    confirmSummarizeBtn.style.display = 'none';
-
-    // 显示提示
-    showStatus('正在生成总结...', 'info');
-
-    // 调用总结函数
-    await summarizeSelectedElement(previewContent);
-  } catch (error) {
-    console.error('确认总结失败:', error);
-    showStatus('确认总结失败: ' + error.message, 'error');
-    setTimeout(hideStatus, 3000);
+summaryModal.addEventListener('click', (e) => {
+  if (e.target === summaryModal) {
+    closeSummaryModalFn();
   }
 });
 
@@ -535,18 +569,15 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'elementPreview') {
     try {
       console.log('处理 elementPreview 消息');
-      // 保存预览内容
-      previewContent = request.content;
 
-      // 显示预览
-      previewContentEl.textContent = previewContent;
-      previewEl.style.display = 'block';
-
-      // 显示确认按钮
-      confirmSummarizeBtn.style.display = 'block';
+      // 存储选中的内容
+      selectedContent = request.content;
+      previewSelectedBtn.style.display = 'block';
+      // 选中预览按钮独占一行
+      previewSelectedBtn.style.gridColumn = 'span 2';
 
       // 显示提示
-      showStatus('已选中元素，请点击确认总结按钮', 'info');
+      showStatus(`已选中元素（${request.content.length} 字符），单击即可总结`, 'info');
 
       sendResponse({ success: true });
     } catch (error) {
@@ -564,12 +595,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       selectElementBtn.style.display = 'block';
       cancelSelectionBtn.style.display = 'none';
       summarizeBtn.disabled = false;
-
-      // 保存选中的元素内容
-      selectedElementContent = request.content;
-
-      // 显示提示
-      showStatus('已选中元素，正在生成总结...', 'info');
 
       // 调用总结函数
       console.log('准备调用 summarizeSelectedElement...');
@@ -596,52 +621,44 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   return true;
 });
 
-// 总结选中的元素
-async function summarizeSelectedElement(content) {
+// 检查是否有缓存的内容
+async function checkCachedContent() {
   try {
-    console.log('========== summarizeSelectedElement 开始 ==========');
-    console.log('接收到的内容长度:', content ? content.length : 0);
-    console.log('API 配置:', {
-      useAPI: API_CONFIG.useAPI,
-      hasApiKey: API_CONFIG.apiKey !== 'YOUR_API_KEY_HERE'
-    });
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
-    if (!content || content.length < 10) {
-      throw new Error('选中的内容太短，无法进行总结');
+    if (!tab || !tab.id) {
+      console.log('无法获取当前标签页');
+      return;
     }
 
-    // 根据配置选择使用 API 或 mock
-    let summaryData;
-    if (API_CONFIG.useAPI && API_CONFIG.apiKey !== 'YOUR_API_KEY_HERE') {
-      console.log('使用 API 进行总结');
-      try {
-        summaryData = await callAPISummarize(content);
-        console.log('API 总结成功');
-      } catch (apiError) {
-        console.error('API 调用失败，使用 mock 模拟:', apiError);
-        showStatus('API 调用失败，使用本地总结...', 'info');
-        summaryData = mockSummarize(content);
-      }
+    console.log('检查是否有缓存的内容...');
+
+    const response = await chrome.tabs.sendMessage(tab.id, { action: 'getCachedContent' });
+
+    if (response && response.success && response.content) {
+      console.log('发现缓存的内容，长度:', response.content.length);
+
+      // 自动开始总结，不需要用户点击按钮
+      console.log('自动开始总结缓存的内容');
+      showStatus(`自动总结之前选中的内容（${response.content.length} 字符）...`, 'info');
+
+      // 清除缓存
+      await chrome.tabs.sendMessage(tab.id, { action: 'clearCachedContent' });
+
+      // 立即开始总结
+      setTimeout(() => {
+        summarizeSelectedElement(response.content);
+      }, 500);
     } else {
-      console.log('使用 mock 进行总结');
-      summaryData = mockSummarize(content);
+      console.log('没有缓存的内容');
     }
-
-    console.log('总结数据:', summaryData);
-
-    summaryContent = formatToMarkdown(summaryData);
-    console.log('Markdown 内容生成完成，长度:', summaryContent.length);
-
-    // 显示下载按钮
-    downloadBtn.style.display = 'block';
-    showStatus('总结生成成功！', 'success');
-
-    // 3秒后隐藏状态
-    setTimeout(hideStatus, 3000);
-
   } catch (error) {
-    console.error('总结过程中出错:', error);
-    showStatus(error.message || '总结失败，请重试', 'error');
-    setTimeout(hideStatus, 3000);
+    console.log('检查缓存内容失败（可能是 content script 未加载）:', error);
   }
 }
+
+// 当 popup 打开时，检查是否有缓存的内容
+document.addEventListener('DOMContentLoaded', () => {
+  console.log('popup 已加载，检查缓存内容...');
+  checkCachedContent();
+});
