@@ -17,6 +17,9 @@ const API_CONFIG = {
   timeout: 60000
 };
 
+// 全局设置
+let summaryLength = 500;
+
 // 获取 DOM 元素
 const selectElementBtn = document.getElementById('selectElementBtn');
 const cancelSelectionBtn = document.getElementById('cancelSelectionBtn');
@@ -24,15 +27,27 @@ const summarizeBtn = document.getElementById('summarizeBtn');
 const downloadBtn = document.getElementById('downloadBtn');
 const previewSelectedBtn = document.getElementById('previewSelectedBtn');
 const previewSummaryBtn = document.getElementById('previewSummaryBtn');
+const settingsBtn = document.getElementById('settingsBtn');
 const statusEl = document.getElementById('status');
 
 // Modal 元素
 const selectedContentModal = document.getElementById('selectedContentModal');
 const summaryModal = document.getElementById('summaryModal');
+const settingsModal = document.getElementById('settingsModal');
 const selectedContentText = document.getElementById('selectedContentText');
 const summaryContentEl = document.getElementById('summaryContent');
 const closeSelectedModal = document.getElementById('closeSelectedModal');
 const closeSummaryModal = document.getElementById('closeSummaryModal');
+const closeSettingsModal = document.getElementById('closeSettingsModal');
+
+// 设置表单元素
+const settingsForm = document.getElementById('settingsForm');
+const apiKeyInput = document.getElementById('apiKey');
+const summaryLengthInput = document.getElementById('summaryLength');
+const enableThinkingCheckbox = document.getElementById('enableThinking');
+const useAPICheckbox = document.getElementById('useAPI');
+const cancelSettingsBtn = document.getElementById('cancelSettings');
+const saveSettingsBtn = document.getElementById('saveSettings');
 
 // 存储预览内容
 let selectedContent = '';
@@ -82,13 +97,69 @@ function closeSummaryModalFn() {
   summaryModal.style.display = 'none';
 }
 
+// 设置相关函数
+function loadSettings() {
+  chrome.storage.sync.get({
+    apiKey: API_CONFIG.apiKey,
+    summaryLength: 500,
+    enableThinking: API_CONFIG.enableThinking,
+    useAPI: API_CONFIG.useAPI
+  }, function(items) {
+    apiKeyInput.value = items.apiKey;
+    summaryLengthInput.value = items.summaryLength;
+    enableThinkingCheckbox.checked = items.enableThinking;
+    useAPICheckbox.checked = items.useAPI;
+    // 更新内存中的配置
+    API_CONFIG.apiKey = items.apiKey;
+    API_CONFIG.enableThinking = items.enableThinking;
+    API_CONFIG.useAPI = items.useAPI;
+    // 更新全局总结字数
+    summaryLength = items.summaryLength;
+  });
+}
+
+function saveSettings() {
+  const settings = {
+    apiKey: apiKeyInput.value.trim(),
+    summaryLength: parseInt(summaryLengthInput.value) || 500,
+    enableThinking: enableThinkingCheckbox.checked,
+    useAPI: useAPICheckbox.checked
+  };
+  chrome.storage.sync.set(settings, function() {
+    // 更新内存中的配置
+    API_CONFIG.apiKey = settings.apiKey;
+    API_CONFIG.enableThinking = settings.enableThinking;
+    API_CONFIG.useAPI = settings.useAPI;
+    // 更新全局总结字数
+    summaryLength = settings.summaryLength;
+    showStatus('设置已保存', 'success');
+    setTimeout(hideStatus, 2000);
+    closeSettingsModalFn();
+  });
+}
+
+function openSettingsModal() {
+  console.log('打开设置弹窗，settingsModal:', settingsModal);
+  if (!settingsModal) {
+    console.error('settingsModal 元素未找到！');
+    return;
+  }
+  loadSettings();
+  settingsModal.style.display = 'flex';
+  console.log('设置弹窗已显示');
+}
+
+function closeSettingsModalFn() {
+  settingsModal.style.display = 'none';
+}
+
 // 模拟 AI 总结功能
 function mockSummarize(text) {
   // 提取前200个字符作为标题
   const title = text.substring(0, 200).replace(/\n/g, ' ').trim();
 
-  // 生成摘要（使用文本的前500个字符）
-  const summary = text.substring(0, 500).replace(/\n/g, ' ').trim();
+  // 生成摘要（使用文本的前summaryLength个字符）
+  const summary = text.substring(0, summaryLength).replace(/\n/g, ' ').trim();
 
   // 生成要点列表（按句子分割）
   const sentences = text.split(/[。！？.!?]/).filter(s => s.trim().length > 10);
@@ -155,7 +226,7 @@ async function callAPISummarize(text) {
       messages: [
         {
           role: 'system',
-          content: '你是一个专业的文章总结助手。请将用户提供的文章内容总结为结构化的格式，包括标题、摘要和要点列表。请使用 Markdown 格式输出，标题用 #，摘要用 ## 摘要，要点用 ## 要点，每个要点用 - 开头。'
+          content: `你是一个专业的文章总结助手。请将用户提供的文章内容总结为结构化的格式，包括标题、摘要和要点列表。请使用 Markdown 格式输出，标题用 #，摘要用 ## 摘要，要点用 ## 要点，每个要点用 - 开头。总结的摘要部分请控制在约${summaryLength}字左右。`
         },
         {
           role: 'user',
@@ -524,42 +595,7 @@ summarizeBtn.addEventListener('click', async () => {
   }
 });
 
-// 下载按钮点击事件
-downloadBtn.addEventListener('click', () => {
-  downloadCurrentSummary();
-});
 
-// 预览选中内容按钮点击事件
-previewSelectedBtn.addEventListener('click', () => {
-  openSelectedContentModal();
-});
-
-// 预览总结结果按钮点击事件
-previewSummaryBtn.addEventListener('click', () => {
-  openSummaryModal();
-});
-
-// 关闭按钮点击事件
-closeSelectedModal.addEventListener('click', () => {
-  closeSelectedContentModalFn();
-});
-
-closeSummaryModal.addEventListener('click', () => {
-  closeSummaryModalFn();
-});
-
-// 点击模态框背景关闭
-selectedContentModal.addEventListener('click', (e) => {
-  if (e.target === selectedContentModal) {
-    closeSelectedContentModalFn();
-  }
-});
-
-summaryModal.addEventListener('click', (e) => {
-  if (e.target === summaryModal) {
-    closeSummaryModalFn();
-  }
-});
 
 // 监听来自 content script 的消息
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -657,8 +693,279 @@ async function checkCachedContent() {
   }
 }
 
-// 当 popup 打开时，检查是否有缓存的内容
+// 当 popup 打开时，初始化所有事件监听器
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('popup 已加载，检查缓存内容...');
+  console.log('popup 已加载，加载设置并检查缓存内容...');
+  loadSettings();
   checkCachedContent();
+  
+  // 绑定所有事件监听器
+  selectElementBtn.addEventListener('click', async () => {
+    try {
+      // 获取当前活动标签页
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+
+      if (!tab || !tab.id) {
+        throw new Error('无法获取当前标签页');
+      }
+
+      // 检查是否可以访问页面
+      try {
+        await chrome.tabs.sendMessage(tab.id, { action: 'ping' });
+      } catch (e) {
+        // 如果 content script 未加载，先注入
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          files: ['content.js']
+        });
+      }
+
+      if (!isSelectionMode) {
+        // 开始选择模式
+        await chrome.tabs.sendMessage(tab.id, { action: 'startSelection' });
+
+        // 更新 UI
+        isSelectionMode = true;
+        selectElementBtn.style.display = 'none';
+        cancelSelectionBtn.style.display = 'block';
+        summarizeBtn.disabled = true;
+
+        // 显示提示
+        showStatus('已启动选择模式，请在页面上选择元素', 'info');
+      }
+    } catch (error) {
+      console.error('启动选择模式失败:', error);
+      showStatus('启动选择模式失败: ' + error.message, 'error');
+      setTimeout(hideStatus, 3000);
+    }
+  });
+
+  cancelSelectionBtn.addEventListener('click', async () => {
+    try {
+      // 获取当前活动标签页
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+
+      if (!tab || !tab.id) {
+        throw new Error('无法获取当前标签页');
+      }
+
+      // 停止选择模式
+      await chrome.tabs.sendMessage(tab.id, { action: 'stopSelection' });
+
+      // 更新 UI
+      isSelectionMode = false;
+      selectElementBtn.style.display = 'block';
+      cancelSelectionBtn.style.display = 'none';
+      summarizeBtn.disabled = false;
+
+      // 隐藏预览和下载按钮
+      previewSelectedBtn.style.display = 'none';
+      previewSummaryBtn.style.display = 'none';
+      downloadBtn.style.display = 'none';
+
+      // 隐藏提示
+      hideStatus();
+    } catch (error) {
+      console.error('取消选择模式失败:', error);
+      showStatus('取消选择模式失败: ' + error.message, 'error');
+      setTimeout(hideStatus, 3000);
+    }
+  });
+
+  summarizeBtn.addEventListener('click', async () => {
+    try {
+      showStatus('正在提取网页内容...', 'info');
+
+      // 获取当前活动标签页
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+
+      if (!tab || !tab.id) {
+        throw new Error('无法获取当前标签页');
+      }
+
+      // 执行 content script
+      const result = await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        function: () => {
+          // 提取网页正文内容
+          function extractMainContent() {
+            // 克隆 body 以避免修改原页面
+            const clone = document.body.cloneNode(true);
+
+            // 先尝试获取主要内容区域
+            const mainSelectors = [
+              'main', 'article', '[role="main"]',
+              '.main-content', '.content', '.article-content',
+              '.post-content', '.entry-content', '.article-body',
+              '#content', '#main', '#article'
+            ];
+
+            for (const selector of mainSelectors) {
+              const element = clone.querySelector(selector);
+              if (element) {
+                const text = element.innerText || element.textContent;
+                if (text && text.trim().length > 100) {
+                  return text.trim();
+                }
+              }
+            }
+
+            // 如果没找到主要内容区域，移除不需要的元素后获取所有文本
+            const selectorsToRemove = [
+              'nav', 'header', 'footer', 'aside',
+              '.navigation', '.nav', '.sidebar', '.ad', '.advertisement',
+              '.comment', '.comments', '.footer', '.header',
+              'script', 'style', 'noscript', 'iframe'
+            ];
+
+            // 移除不需要的元素
+            selectorsToRemove.forEach(selector => {
+              clone.querySelectorAll(selector).forEach(el => el.remove());
+            });
+
+            // 获取所有段落
+            const paragraphs = clone.querySelectorAll('p, div, section, h1, h2, h3, h4, h5, h6');
+
+            // 如果找到段落，合并所有段落内容
+            if (paragraphs.length > 0) {
+              let allText = '';
+              paragraphs.forEach(p => {
+                const text = p.innerText || p.textContent;
+                if (text && text.trim().length > 10) {
+                  allText += text.trim() + ' ';
+                }
+              });
+              return allText.trim() || clone.innerText;
+            }
+
+            // 如果没有找到段落，使用整个 body 的文本
+            return clone.innerText;
+          }
+
+          // 提取并清理文本
+          const content = extractMainContent();
+          console.log('提取的内容长度:', content.length);
+          console.log('提取的内容预览:', content.substring(0, 200));
+          return content
+            .replace(/\s+/g, ' ')  // 合并空白字符
+            .replace(/\n+/g, '\n')  // 合并换行
+            .trim();
+        }
+      });
+
+      if (!result || result.length === 0) {
+        throw new Error('无法提取网页内容');
+      }
+
+      const extractedText = result[0].result;
+
+      console.log('提取的文本长度:', extractedText.length);
+      console.log('提取的文本预览:', extractedText.substring(0, 200));
+
+      if (!extractedText || extractedText.length < 10) {
+        throw new Error('提取的内容太短，无法进行总结');
+      }
+
+      // 存储选中的内容
+      selectedContent = extractedText;
+      previewSelectedBtn.style.display = 'block';
+
+      showStatus('正在生成总结...', 'info');
+
+      // 根据配置选择使用 API 或 mock
+      let summaryData;
+      if (API_CONFIG.useAPI && API_CONFIG.apiKey !== 'YOUR_API_KEY_HERE') {
+        try {
+          summaryData = await callAPISummarize(extractedText);
+        } catch (apiError) {
+          console.error('API 调用失败，使用 mock 模拟:', apiError);
+          showStatus('API 调用失败，使用本地总结...', 'info');
+          summaryData = mockSummarize(extractedText);
+        }
+      } else {
+        summaryData = mockSummarize(extractedText);
+      }
+
+      // 生成 Markdown
+      const markdown = formatToMarkdown(summaryData);
+
+      // 存储总结结果
+      summaryResult = markdown;
+      previewSummaryBtn.style.display = 'block';
+
+      // 两个预览按钮同行显示
+      previewSelectedBtn.style.gridColumn = 'span 1';
+
+      // 保存到全局变量供下载使用
+      window.summaryContent = markdown;
+
+      // 显示下载按钮
+      downloadBtn.style.display = 'block';
+      showStatus('总结生成成功！', 'success');
+
+      // 3秒后隐藏状态
+      setTimeout(hideStatus, 3000);
+
+    } catch (error) {
+      console.error('总结过程中出错:', error);
+      showStatus(error.message || '总结失败，请重试', 'error');
+      setTimeout(hideStatus, 3000);
+    }
+  });
+
+  downloadBtn.addEventListener('click', () => {
+    downloadCurrentSummary();
+  });
+
+  previewSelectedBtn.addEventListener('click', () => {
+    openSelectedContentModal();
+  });
+
+  previewSummaryBtn.addEventListener('click', () => {
+    openSummaryModal();
+  });
+
+  closeSelectedModal.addEventListener('click', () => {
+    closeSelectedContentModalFn();
+  });
+
+  closeSummaryModal.addEventListener('click', () => {
+    closeSummaryModalFn();
+  });
+
+  selectedContentModal.addEventListener('click', (e) => {
+    if (e.target === selectedContentModal) {
+      closeSelectedContentModalFn();
+    }
+  });
+
+  summaryModal.addEventListener('click', (e) => {
+    if (e.target === summaryModal) {
+      closeSummaryModalFn();
+    }
+  });
+
+  settingsBtn.addEventListener('click', () => {
+    console.log('设置按钮被点击，settingsBtn:', settingsBtn);
+    openSettingsModal();
+  });
+
+  settingsForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    saveSettings();
+  });
+
+  cancelSettingsBtn.addEventListener('click', () => {
+    closeSettingsModalFn();
+  });
+
+  closeSettingsModal.addEventListener('click', () => {
+    closeSettingsModalFn();
+  });
+
+  settingsModal.addEventListener('click', (e) => {
+    if (e.target === settingsModal) {
+      closeSettingsModalFn();
+    }
+  });
 });
