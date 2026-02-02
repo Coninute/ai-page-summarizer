@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>网页内容总结助手</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      width: 380px;
+      padding: 20px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: #f8f9fa;
+      color: #333;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .header h1 {
+      font-size: 18px;
+      color: #2c3e50;
+      margin-bottom: 5px;
+    }
+
+    .header p {
+      font-size: 12px;
+      color: #7f8c8d;
+    }
+
+    .button-container {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .btn {
+      padding: 12px 16px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-primary {
+      background: #3498db;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #2980b9;
+    }
+
+    .btn-primary:disabled {
+      background: #95a5a6;
+      cursor: not-allowed;
+    }
+
+    .btn-success {
+      background: #27ae60;
+      color: white;
+      display: none;
+    }
+
+    .btn-success:hover {
+      background: #219a52;
+    }
+
+    .btn-secondary {
+      background: #667eea;
+      color: white;
+    }
+
+    .btn-secondary:hover {
+      background: #5568d3;
+    }
+
+    .status {
+      text-align: center;
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 13px;
+      display: none;
+    }
+
+    .status.info {
+      background: #e3f2fd;
+      color: #1976d2;
+    }
+
+    .status.success {
+      background: #e8f5e9;
+      color: #388e3c;
+    }
+
+    .status.error {
+      background: #ffebee;
+      color: #d32f2f;
+    }
+
+    .loading {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #1976d2;
+      border-radius: 50%;
+      border-top-color: transparent;
+      animation: spin 1s linear infinite;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .footer {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 11px;
+      color: #95a5a6;
+    }
+
+    .preview {
+      margin-top: 16px;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .preview-header {
+      background: #f5f5f5;
+      padding: 10px 12px;
+      font-size: 13px;
+      font-weight: 500;
+      color: #333;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    .preview-content {
+      padding: 12px;
+      font-size: 12px;
+      color: #555;
+      max-height: 200px;
+      overflow-y: auto;
+      line-height: 1.5;
+      word-wrap: break-word;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>网页内容总结助手</h1>
+    <p>一键总结当前网页内容</p>
+  </div>
+
+  <div class="button-container">
+    <button id="selectElementBtn" class="btn btn-secondary">选择元素进行总结</button>
+    <button id="cancelSelectionBtn" class="btn btn-secondary" style="display: none; background: #e74c3c;">取消选择</button>
+    <button id="confirmSummarizeBtn" class="btn btn-success" style="display: none;">确认总结</button>
+    <button id="summarizeBtn" class="btn btn-primary">总结当前网页内容</button>
+    <button id="downloadBtn" class="btn btn-success">下载为 .md 文件</button>
+  </div>
+
+  <div id="preview" class="preview" style="display: none;">
+    <div class="preview-header">选中的内容预览</div>
+    <div id="previewContent" class="preview-content"></div>
+  </div>
+
+  <div id="status" class="status"></div>
+
+  <div class="footer">
+    版本 1.0.0 | 使用 Manifest V3
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
