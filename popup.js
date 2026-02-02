@@ -20,7 +20,6 @@ const API_CONFIG = {
 // 获取 DOM 元素
 const selectElementBtn = document.getElementById('selectElementBtn');
 const cancelSelectionBtn = document.getElementById('cancelSelectionBtn');
-const confirmSummarizeBtn = document.getElementById('confirmSummarizeBtn');
 const summarizeBtn = document.getElementById('summarizeBtn');
 const downloadBtn = document.getElementById('downloadBtn');
 const statusEl = document.getElementById('status');

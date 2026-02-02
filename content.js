@@ -26,143 +26,6 @@ const DOUBLE_CLICK_DELAY = 300; // 双击延迟时间（毫秒）
 // 存储状态提示框
 let statusBox = null;
 
-// 存储跟随鼠标的确认按钮
-let floatingConfirmButton = null;
-
-/**
- * 创建跟随鼠标的确认按钮
- */
-function createFloatingConfirmButton() {
-  if (floatingConfirmButton) return;
-
-  try {
-    floatingConfirmButton = document.createElement('button');
-    floatingConfirmButton.id = 'web-summarizer-floating-confirm';
-    floatingConfirmButton.textContent = '点击此处确认总结';
-    floatingConfirmButton.style.cssText = `
-      position: fixed;
-      z-index: 2147483648;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      border: 3px solid white;
-      padding: 10px 20px;
-      border-radius: 25px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
-      transition: all 0.2s ease;
-      display: none;
-      pointer-events: auto;
-      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-    `;
-
-    floatingConfirmButton.addEventListener('click', (e) => {
-      console.log('========== 点击浮动确认按钮 ==========');
-      e.stopPropagation();
-      e.preventDefault();
-      e.stopImmediatePropagation();
-      console.log('准备调用 confirmSelection');
-      updateStatusBox('正在提取内容并生成总结...', 'info');
-      confirmSelection();
-    });
-
-    floatingConfirmButton.addEventListener('mouseover', () => {
-      floatingConfirmButton.style.transform = 'scale(1.08)';
-      floatingConfirmButton.style.boxShadow = '0 8px 20px rgba(0, 0, 0, 0.5)';
-    });
-
-    floatingConfirmButton.addEventListener('mouseout', () => {
-      floatingConfirmButton.style.transform = 'scale(1)';
-      floatingConfirmButton.style.boxShadow = '0 6px 16px rgba(0, 0, 0, 0.4)';
-    });
-
-    // 添加到文档，确保它能接收点击事件
-    document.body.appendChild(floatingConfirmButton);
-
-    // 确保 body 的 pointer-events 正确
-    document.body.style.pointerEvents = 'auto';
-  } catch (error) {
-    console.error('创建浮动确认按钮失败:', error);
-  }
-}
-
-/**
- * 更新浮动确认按钮的位置
- */
-function updateFloatingConfirmButton(element) {
-  if (!floatingConfirmButton || !element) return;
-
-  try {
-    const rect = element.getBoundingClientRect();
-
-    // 按钮尺寸（估算）
-    const buttonWidth = 160;
-    const buttonHeight = 40;
-
-    // 计算按钮位置（在元素右上角）
-    let buttonX = rect.right + 15;
-    let buttonY = rect.top;
-
-    // 确保按钮不会超出视口
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-
-    // 如果右侧超出，显示在左侧
-    if (buttonX + buttonWidth > viewportWidth) {
-      buttonX = rect.left - buttonWidth - 15;
-      // 如果左侧也超出，就显示在视口右侧边缘
-      if (buttonX < 10) {
-        buttonX = viewportWidth - buttonWidth - 20;
-      }
-    }
-
-    // 如果顶部超出，显示在底部
-    if (buttonY < 10) {
-      buttonY = rect.bottom + 10;
-      // 如果底部也超出，就显示在视口顶部
-      if (buttonY + buttonHeight > viewportHeight) {
-        buttonY = 20;
-      }
-    }
-
-    // 确保按钮在视口内
-    buttonX = Math.max(10, Math.min(buttonX, viewportWidth - buttonWidth - 10));
-    buttonY = Math.max(10, Math.min(buttonY, viewportHeight - buttonHeight - 10));
-
-    floatingConfirmButton.style.left = buttonX + 'px';
-    floatingConfirmButton.style.top = buttonY + 'px';
-    floatingConfirmButton.style.display = 'block';
-
-    console.log('浮动按钮位置:', { x: buttonX, y: buttonY });
-  } catch (error) {
-    console.error('更新浮动确认按钮位置失败:', error);
-  }
-}
-
-/**
- * 隐藏浮动确认按钮
- */
-function hideFloatingConfirmButton() {
-  if (floatingConfirmButton) {
-    floatingConfirmButton.style.display = 'none';
-  }
-}
-
-/**
- * 移除浮动确认按钮
- */
-function removeFloatingConfirmButton() {
-  if (floatingConfirmButton) {
-    try {
-      floatingConfirmButton.remove();
-    } catch (error) {
-      console.error('移除浮动确认按钮失败:', error);
-    }
-    floatingConfirmButton = null;
-  }
-}
-
 /**
  * 创建状态提示框
  */
@@ -192,7 +55,7 @@ function createStatusBox() {
       max-width: 400px;
       text-align: center;
     `;
-    statusBox.textContent = '请悬停在元素上，双击或点击确认按钮进行总结';
+    statusBox.textContent = '请悬停在元素上，单击即可直接总结';
 
     document.body.appendChild(statusBox);
   } catch (error) {
@@ -401,9 +264,6 @@ function startSelection() {
     createStatusBox();
     updateStatusBox('请悬停在元素上，单击即可直接总结', 'info');
 
-    // 创建浮动确认按钮
-    createFloatingConfirmButton();
-
     // 添加鼠标事件监听（捕获阶段，优先级更高）
     document.body.addEventListener('mouseover', handleMouseOver, true);
     document.body.addEventListener('mouseout', handleMouseOut, true);
@@ -437,9 +297,6 @@ function stopSelection() {
     // 移除状态提示框
     removeStatusBox();
 
-    // 移除浮动确认按钮
-    removeFloatingConfirmButton();
-
     // 移除高亮
     removeHighlight();
 
@@ -461,11 +318,9 @@ function stopSelection() {
  * 处理鼠标悬停
  */
 function handleMouseOver(e) {
-  // 忽略提示框和浮动按钮
+  // 忽略提示框
   if (e.target.id === 'web-summarizer-selection-box' ||
-      e.target.closest('#web-summarizer-selection-box') ||
-      e.target.id === 'web-summarizer-floating-confirm' ||
-      e.target.closest('#web-summarizer-floating-confirm')) {
+      e.target.closest('#web-summarizer-selection-box')) {
     return;
   }
 
@@ -475,9 +330,6 @@ function handleMouseOver(e) {
 
     // 高亮元素
     highlightElement(hoveredElement);
-
-    // 更新浮动确认按钮的位置
-    updateFloatingConfirmButton(hoveredElement);
 
     // 更新状态提示框
     const text = hoveredElement.innerText || hoveredElement.textContent || '';
@@ -490,7 +342,7 @@ function handleMouseOver(e) {
       statusMessage += ` .${className.split(' ')[0]}`;
     }
     statusMessage += ` - "${textPreview}"`;
-    statusMessage += '\n单击或点击浮动按钮进行总结';
+    statusMessage += '\n单击即可直接总结';
 
     updateStatusBox(statusMessage, 'info');
   } catch (error) {
@@ -502,11 +354,9 @@ function handleMouseOver(e) {
  * 处理鼠标移出
  */
 function handleMouseOut(e) {
-  // 忽略提示框和浮动按钮
+  // 忽略提示框
   if (e.target.id === 'web-summarizer-selection-box' ||
-      e.target.closest('#web-summarizer-selection-box') ||
-      e.target.id === 'web-summarizer-floating-confirm' ||
-      e.target.closest('#web-summarizer-floating-confirm')) {
+      e.target.closest('#web-summarizer-selection-box')) {
     return;
   }
 
@@ -518,9 +368,6 @@ function handleMouseOut(e) {
     } catch (err) {
       // 忽略错误
     }
-
-    // 隐藏浮动确认按钮
-    hideFloatingConfirmButton();
   } catch (error) {
     console.error('处理鼠标移出失败:', error);
   }
@@ -530,10 +377,9 @@ function handleMouseOut(e) {
  * 处理点击事件
  */
 function handleClick(e) {
-  // 忽略提示框和浮动确认按钮
+  // 忽略提示框
   if (e.target.id === 'web-summarizer-selection-box' ||
-      e.target.closest('#web-summarizer-selection-box') ||
-      e.target.id === 'web-summarizer-floating-confirm') {
+      e.target.closest('#web-summarizer-selection-box')) {
     return;
   }
 
