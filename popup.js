@@ -13,6 +13,8 @@ const API_CONFIG = {
   model: 'deepseek-ai/DeepSeek-V3.2',
   // 是否启用思考过程
   enableThinking: true,
+  // 生成内容类型
+  contentType: 'summary',
   // 请求超时时间（毫秒）
   timeout: 60000
 };
@@ -46,6 +48,7 @@ const apiKeyInput = document.getElementById('apiKey');
 const summaryLengthInput = document.getElementById('summaryLength');
 const enableThinkingCheckbox = document.getElementById('enableThinking');
 const useAPICheckbox = document.getElementById('useAPI');
+const contentTypeSelect = document.getElementById('contentType');
 const cancelSettingsBtn = document.getElementById('cancelSettings');
 const saveSettingsBtn = document.getElementById('saveSettings');
 
@@ -103,16 +106,19 @@ function loadSettings() {
     apiKey: API_CONFIG.apiKey,
     summaryLength: 500,
     enableThinking: API_CONFIG.enableThinking,
-    useAPI: API_CONFIG.useAPI
+    useAPI: API_CONFIG.useAPI,
+    contentType: API_CONFIG.contentType
   }, function(items) {
     apiKeyInput.value = items.apiKey;
     summaryLengthInput.value = items.summaryLength;
     enableThinkingCheckbox.checked = items.enableThinking;
     useAPICheckbox.checked = items.useAPI;
+    if (contentTypeSelect) contentTypeSelect.value = items.contentType;
     // 更新内存中的配置
     API_CONFIG.apiKey = items.apiKey;
     API_CONFIG.enableThinking = items.enableThinking;
     API_CONFIG.useAPI = items.useAPI;
+    API_CONFIG.contentType = items.contentType;
     // 更新全局总结字数
     summaryLength = items.summaryLength;
   });
@@ -123,13 +129,15 @@ function saveSettings() {
     apiKey: apiKeyInput.value.trim(),
     summaryLength: parseInt(summaryLengthInput.value) || 500,
     enableThinking: enableThinkingCheckbox.checked,
-    useAPI: useAPICheckbox.checked
+    useAPI: useAPICheckbox.checked,
+    contentType: contentTypeSelect ? contentTypeSelect.value : 'summary'
   };
   chrome.storage.sync.set(settings, function() {
     // 更新内存中的配置
     API_CONFIG.apiKey = settings.apiKey;
     API_CONFIG.enableThinking = settings.enableThinking;
     API_CONFIG.useAPI = settings.useAPI;
+    API_CONFIG.contentType = settings.contentType;
     // 更新全局总结字数
     summaryLength = settings.summaryLength;
     showStatus('设置已保存', 'success');
@@ -155,8 +163,28 @@ function closeSettingsModalFn() {
 
 // 模拟 AI 总结功能
 function mockSummarize(text) {
+  // 根据内容类型生成标题前缀
+  let prefix = '';
+  switch (API_CONFIG.contentType) {
+    case 'blog':
+      prefix = '[博客] ';
+      break;
+    case 'article':
+      prefix = '[文章] ';
+      break;
+    case 'report':
+      prefix = '[报告] ';
+      break;
+    case 'bulletpoints':
+      prefix = '[要点] ';
+      break;
+    case 'summary':
+    default:
+      prefix = '[总结] ';
+  }
   // 提取前200个字符作为标题
-  const title = text.substring(0, 200).replace(/\n/g, ' ').trim();
+  const rawTitle = text.substring(0, 200).replace(/\n/g, ' ').trim();
+  const title = prefix + rawTitle;
 
   // 生成摘要（使用文本的前summaryLength个字符）
   const summary = text.substring(0, summaryLength).replace(/\n/g, ' ').trim();
@@ -175,8 +203,35 @@ function mockSummarize(text) {
 // 格式化为 Markdown
 function formatToMarkdown(summaryData) {
   let markdown = `# ${summaryData.title}\n\n`;
-  markdown += `## 摘要\n${summaryData.summary}\n\n`;
-  markdown += `## 要点\n`;
+  
+  // 根据内容类型决定章节标题
+  let section1Title = '摘要';
+  let section2Title = '要点';
+  switch (API_CONFIG.contentType) {
+    case 'blog':
+      section1Title = '引言';
+      section2Title = '正文';
+      break;
+    case 'article':
+      section1Title = '摘要';
+      section2Title = '正文';
+      break;
+    case 'report':
+      section1Title = '执行摘要';
+      section2Title = '主要发现';
+      break;
+    case 'bulletpoints':
+      section1Title = '摘要';
+      section2Title = '关键要点';
+      break;
+    case 'summary':
+    default:
+      section1Title = '摘要';
+      section2Title = '要点';
+  }
+  
+  markdown += `## ${section1Title}\n${summaryData.summary}\n\n`;
+  markdown += `## ${section2Title}\n`;
   summaryData.keyPoints.forEach(point => {
     markdown += `- ${point}\n`;
   });
@@ -220,17 +275,37 @@ function downloadCurrentSummary() {
 // 调用 API 进行总结
 async function callAPISummarize(text) {
   try {
+    // 根据内容类型生成系统提示
+    let systemPrompt = '';
+    switch (API_CONFIG.contentType) {
+      case 'blog':
+        systemPrompt = `你是一个专业的博客作者。请根据用户提供的文章内容，创作一篇结构完整的博客文章，包括吸引人的标题、引言、正文和结论。请使用 Markdown 格式输出，标题用 #，引言用 ## 引言，正文用 ## 正文，结论用 ## 结论。博客文章请控制在约${summaryLength}字左右。`;
+        break;
+      case 'article':
+        systemPrompt = `你是一个专业的文章编辑。请根据用户提供的文章内容，重新组织并润色为一篇结构清晰的文章，包括标题、摘要、正文和总结。请使用 Markdown 格式输出，标题用 #，摘要用 ## 摘要，正文用 ## 正文，总结用 ## 总结。文章请控制在约${summaryLength}字左右。`;
+        break;
+      case 'report':
+        systemPrompt = `你是一个专业的报告撰写者。请根据用户提供的文章内容，撰写一份结构严谨的报告，包括报告标题、执行摘要、主要发现和建议。请使用 Markdown 格式输出，标题用 #，执行摘要用 ## 执行摘要，主要发现用 ## 主要发现，建议用 ## 建议。报告请控制在约${summaryLength}字左右。`;
+        break;
+      case 'bulletpoints':
+        systemPrompt = `你是一个专业的要点提炼师。请将用户提供的文章内容提炼为清晰的要点列表，包括一个概括性标题和多个关键要点。请使用 Markdown 格式输出，标题用 #，要点用 ## 要点，每个要点用 - 开头。要点列表请控制在约${summaryLength}字左右。`;
+        break;
+      case 'summary':
+      default:
+        systemPrompt = `你是一个专业的文章总结助手。请将用户提供的文章内容总结为结构化的格式，包括标题、摘要和要点列表。请使用 Markdown 格式输出，标题用 #，摘要用 ## 摘要，要点用 ## 要点，每个要点用 - 开头。总结的摘要部分请控制在约${summaryLength}字左右。`;
+    }
+
     // 构建请求体
     const requestBody = {
       model: API_CONFIG.model,
       messages: [
         {
           role: 'system',
-          content: `你是一个专业的文章总结助手。请将用户提供的文章内容总结为结构化的格式，包括标题、摘要和要点列表。请使用 Markdown 格式输出，标题用 #，摘要用 ## 摘要，要点用 ## 要点，每个要点用 - 开头。总结的摘要部分请控制在约${summaryLength}字左右。`
+          content: systemPrompt
         },
         {
           role: 'user',
-          content: `请总结以下文章内容：\n\n${text.substring(0, 4000)}`
+          content: `请根据以下内容生成${API_CONFIG.contentType === 'summary' ? '总结' : API_CONFIG.contentType === 'blog' ? '博客文章' : API_CONFIG.contentType === 'article' ? '文章' : API_CONFIG.contentType === 'report' ? '报告' : '要点列表'}：\n\n${text.substring(0, 4000)}`
         }
       ],
       stream: false
@@ -969,9 +1044,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  settingsBtn.addEventListener('click', () => {
+  settingsBtn.addEventListener('click', async () => {
     console.log('设置按钮被点击，settingsBtn:', settingsBtn);
-    openSettingsModal();
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tab || !tab.id) {
+        throw new Error('无法获取当前标签页');
+      }
+      await chrome.tabs.sendMessage(tab.id, {
+        action: 'showSettingsModal'
+      });
+    } catch (error) {
+      console.error('发送消息失败，使用本地弹窗:', error);
+      openSettingsModal();
+    }
   });
 
   settingsForm.addEventListener('submit', (e) => {

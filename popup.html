@@ -18,16 +18,17 @@
       background: #f0f7ff;
       color: #333;
       border: 0;
+      position: relative;
     }
 
     .header {
       text-align: center;
       margin-bottom: 20px;
-      background: white;
+      /* background: white; */
       padding: 20px;
       border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(100, 181, 246, 0.2);
-      border: 1px solid #e3f2fd;
+      /* box-shadow: 0 2px 8px rgba(100, 181, 246, 0.2); */
+      /* border: 1px solid #e3f2fd; */
     }
 
     .header h1 {
@@ -356,6 +357,37 @@
       color: #333;
       cursor: pointer;
     }
+
+    /* 设置图标按钮 */
+    .settings-icon-btn {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      width: 36px;
+      height: 36px;
+      border: none;
+      border-radius: 8px;
+      background: white;
+      color: #64b5f6;
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      transition: all 0.2s ease;
+      z-index: 10;
+      padding: 0;
+    }
+
+    .settings-icon-btn:hover {
+      background: #e3f2fd;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    }
+
+    .settings-icon-btn:active {
+      transform: translateY(1px);
+    }
   </style>
 </head>
 <body>
@@ -364,6 +396,8 @@
     <p>一键总结当前网页内容</p>
   </div>
 
+  <button id="settingsBtn" class="settings-icon-btn">⚙️</button>
+
   <div class="button-container">
     <button id="summarizeBtn" class="btn btn-primary">总结当前网页内容</button>
     <button id="selectElementBtn" class="btn btn-secondary">选择元素进行总结</button>
@@ -371,7 +405,6 @@
     <button id="previewSelectedBtn" class="btn btn-preview">预览选中的内容</button>
     <button id="previewSummaryBtn" class="btn btn-preview">预览总结结果</button>
     <button id="downloadBtn" class="btn btn-success">下载为 .md 文件</button>
-    <button id="settingsBtn" class="btn btn-secondary">⚙️ 设置</button>
   </div>
 
   <!-- 选中的内容弹框 -->
@@ -426,6 +459,17 @@
           <div class="form-checkbox">
             <input type="checkbox" id="useAPI" checked>
             <label for="useAPI">启用 API 总结（如关闭则使用本地模拟）</label>
+          </div>
+          <div class="form-group">
+            <label for="contentType" class="form-label">生成内容类型</label>
+            <select id="contentType" class="form-input">
+              <option value="summary">总结</option>
+              <option value="blog">博客</option>
+              <option value="article">文章</option>
+              <option value="report">报告</option>
+              <option value="bulletpoints">要点列表</option>
+            </select>
+            <div class="form-hint">选择 AI 生成内容的类型</div>
           </div>
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px;">
             <button type="button" id="cancelSettings" class="btn btn-secondary">取消</button>

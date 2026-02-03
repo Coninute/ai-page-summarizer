@@ -621,6 +621,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     // 显示总结结果弹窗
     showPageSummaryModal(request.content);
     sendResponse({ success: true });
+  } else if (request.action === 'showSettingsModal') {
+    // 显示设置弹窗
+    showPageSettingsModal();
+    sendResponse({ success: true });
   }
 
   // 返回 true 表示异步响应
@@ -632,7 +636,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
  */
 function createPageModals() {
   // 如果已经创建，则返回
-  if (pageSelectedModal && pageSummaryModal) return;
+  if (pageSelectedModal && pageSummaryModal && pageSettingsModal) return;
 
   try {
     // 创建选中的内容弹窗
@@ -713,6 +717,100 @@ function createPageModals() {
       });
     }
 
+    // 创建设置弹窗
+    if (!pageSettingsModal) {
+      pageSettingsModal = document.createElement('div');
+      pageSettingsModal.id = 'web-summarizer-settings-modal';
+      pageSettingsModal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 2147483645;
+      `;
+      pageSettingsModal.innerHTML = `
+        <div style="background: white; border-radius: 12px; width: 90%; max-width: 600px; max-height: 80vh; overflow: hidden; box-shadow: 0 4px 20px rgba(100, 181, 246, 0.2);">
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; background: #64b5f6; border-bottom: 1px solid #e3f2fd;">
+            <span style="font-size: 16px; font-weight: 600; color: white;">设置</span>
+            <span id="web-summarizer-close-settings-modal" style="font-size: 24px; color: rgba(255, 255, 255, 0.9); cursor: pointer; line-height: 1; user-select: none;">&times;</span>
+          </div>
+          <div style="padding: 20px; max-height: calc(80vh - 70px); overflow-y: auto;">
+            <form id="web-summarizer-settings-form">
+              <div style="margin-bottom: 20px;">
+                <label for="web-summarizer-apiKey" style="display: block; margin-bottom: 8px; font-weight: 500; color: #333; font-size: 14px;">ModelScope API Key</label>
+                <input type="text" id="web-summarizer-apiKey" style="width: 100%; padding: 10px 12px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 14px; color: #333; font-family: inherit; transition: border-color 0.2s ease;" placeholder="输入您的 ModelScope API Key">
+                <div style="margin-top: 6px; font-size: 12px; color: #90a4ae;">用于调用 ModelScope API 进行 AI 总结</div>
+              </div>
+              <div style="margin-bottom: 20px;">
+                <label for="web-summarizer-summaryLength" style="display: block; margin-bottom: 8px; font-weight: 500; color: #333; font-size: 14px;">总结字数</label>
+                <input type="number" id="web-summarizer-summaryLength" style="width: 100%; padding: 10px 12px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 14px; color: #333; font-family: inherit; transition: border-color 0.2s ease;" placeholder="500" min="100" max="2000" step="50">
+                <div style="margin-top: 6px; font-size: 12px; color: #90a4ae;">控制总结结果的大致字数（默认 500 字）</div>
+              </div>
+              <div style="margin-bottom: 16px;">
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                  <input type="checkbox" id="web-summarizer-enableThinking" checked>
+                  <span style="font-size: 14px; color: #333;">启用思考过程（增加推理步骤）</span>
+                </label>
+              </div>
+              <div style="margin-bottom: 24px;">
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                  <input type="checkbox" id="web-summarizer-useAPI" checked>
+                  <span style="font-size: 14px; color: #333;">启用 API 总结（如关闭则使用本地模拟）</span>
+                </label>
+              </div>
+              <div style="margin-bottom: 24px;">
+                <label for="web-summarizer-contentType" style="display: block; margin-bottom: 8px; font-weight: 500; color: #333; font-size: 14px;">生成内容类型</label>
+                <select id="web-summarizer-contentType" style="width: 100%; padding: 10px 12px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 14px; color: #333; font-family: inherit; transition: border-color 0.2s ease;">
+                  <option value="summary">总结</option>
+                  <option value="blog">博客</option>
+                  <option value="article">文章</option>
+                  <option value="report">报告</option>
+                  <option value="bulletpoints">要点列表</option>
+                </select>
+                <div style="margin-top: 6px; font-size: 12px; color: #90a4ae;">选择 AI 生成内容的类型</div>
+              </div>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <button type="button" id="web-summarizer-cancel-settings" style="background: #90a4ae; color: white; border: none; padding: 12px; border-radius: 6px; font-size: 14px; cursor: pointer; transition: background-color 0.2s ease;">取消</button>
+                <button type="submit" id="web-summarizer-save-settings" style="background: #64b5f6; color: white; border: none; padding: 12px; border-radius: 6px; font-size: 14px; cursor: pointer; transition: background-color 0.2s ease;">保存设置</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(pageSettingsModal);
+
+      // 关闭按钮事件
+      pageSettingsModal.querySelector('#web-summarizer-close-settings-modal').addEventListener('click', () => {
+        pageSettingsModal.style.display = 'none';
+      });
+      // 点击背景关闭
+      pageSettingsModal.addEventListener('click', (e) => {
+        if (e.target === pageSettingsModal) {
+          pageSettingsModal.style.display = 'none';
+        }
+      });
+
+      // 表单提交事件
+      const settingsForm = pageSettingsModal.querySelector('#web-summarizer-settings-form');
+      settingsForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        savePageSettings();
+      });
+
+      // 取消按钮事件
+      pageSettingsModal.querySelector('#web-summarizer-cancel-settings').addEventListener('click', () => {
+        pageSettingsModal.style.display = 'none';
+      });
+
+      // 加载设置
+      loadPageSettings();
+    }
+
     console.log('页面级弹窗创建成功');
   } catch (error) {
     console.error('创建页面级弹窗失败:', error);
@@ -748,5 +846,80 @@ function showPageSummaryModal(content) {
     pageSummaryModal.style.display = 'flex';
   } catch (error) {
     console.error('显示总结结果弹窗失败:', error);
+  }
+}
+
+/**
+ * 加载页面设置
+ */
+function loadPageSettings() {
+  chrome.storage.sync.get({
+    apiKey: 'ms-fdef09ef-0e3a-4e86-ab5e-53e7a5a1296c',
+    summaryLength: 500,
+    enableThinking: true,
+    useAPI: true,
+    contentType: 'summary'
+  }, function(items) {
+    const apiKeyInput = document.getElementById('web-summarizer-apiKey');
+    const summaryLengthInput = document.getElementById('web-summarizer-summaryLength');
+    const enableThinkingCheckbox = document.getElementById('web-summarizer-enableThinking');
+    const useAPICheckbox = document.getElementById('web-summarizer-useAPI');
+    const contentTypeSelect = document.getElementById('web-summarizer-contentType');
+    
+    if (apiKeyInput) apiKeyInput.value = items.apiKey;
+    if (summaryLengthInput) summaryLengthInput.value = items.summaryLength;
+    if (enableThinkingCheckbox) enableThinkingCheckbox.checked = items.enableThinking;
+    if (useAPICheckbox) useAPICheckbox.checked = items.useAPI;
+    if (contentTypeSelect) contentTypeSelect.value = items.contentType;
+  });
+}
+
+/**
+ * 保存页面设置
+ */
+function savePageSettings() {
+  const apiKeyInput = document.getElementById('web-summarizer-apiKey');
+  const summaryLengthInput = document.getElementById('web-summarizer-summaryLength');
+  const enableThinkingCheckbox = document.getElementById('web-summarizer-enableThinking');
+  const useAPICheckbox = document.getElementById('web-summarizer-useAPI');
+  const contentTypeSelect = document.getElementById('web-summarizer-contentType');
+  
+  if (!apiKeyInput || !summaryLengthInput || !enableThinkingCheckbox || !useAPICheckbox || !contentTypeSelect) {
+    console.error('设置表单元素未找到');
+    return;
+  }
+  
+  const settings = {
+    apiKey: apiKeyInput.value.trim(),
+    summaryLength: parseInt(summaryLengthInput.value) || 500,
+    enableThinking: enableThinkingCheckbox.checked,
+    useAPI: useAPICheckbox.checked,
+    contentType: contentTypeSelect.value
+  };
+  
+  chrome.storage.sync.set(settings, function() {
+    console.log('设置已保存');
+    // 隐藏弹窗
+    if (pageSettingsModal) {
+      pageSettingsModal.style.display = 'none';
+    }
+    // 显示成功提示
+    createStatusBox();
+    updateStatusBox('设置已保存', 'success');
+    setTimeout(() => removeStatusBox(), 2000);
+  });
+}
+
+/**
+ * 显示设置弹窗
+ */
+function showPageSettingsModal() {
+  try {
+    createPageModals();
+    // 确保加载最新设置
+    loadPageSettings();
+    pageSettingsModal.style.display = 'flex';
+  } catch (error) {
+    console.error('显示设置弹窗失败:', error);
   }
 }
