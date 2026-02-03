@@ -917,12 +917,36 @@ document.addEventListener('DOMContentLoaded', () => {
     downloadCurrentSummary();
   });
 
-  previewSelectedBtn.addEventListener('click', () => {
-    openSelectedContentModal();
+  previewSelectedBtn.addEventListener('click', async () => {
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tab || !tab.id) {
+        throw new Error('无法获取当前标签页');
+      }
+      await chrome.tabs.sendMessage(tab.id, {
+        action: 'showSelectedModal',
+        content: selectedContent
+      });
+    } catch (error) {
+      console.error('发送消息失败，使用本地弹窗:', error);
+      openSelectedContentModal();
+    }
   });
 
-  previewSummaryBtn.addEventListener('click', () => {
-    openSummaryModal();
+  previewSummaryBtn.addEventListener('click', async () => {
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tab || !tab.id) {
+        throw new Error('无法获取当前标签页');
+      }
+      await chrome.tabs.sendMessage(tab.id, {
+        action: 'showSummaryModal',
+        content: summaryResult
+      });
+    } catch (error) {
+      console.error('发送消息失败，使用本地弹窗:', error);
+      openSummaryModal();
+    }
   });
 
   closeSelectedModal.addEventListener('click', () => {

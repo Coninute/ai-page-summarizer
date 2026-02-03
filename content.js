@@ -26,6 +26,11 @@ const DOUBLE_CLICK_DELAY = 300; // 双击延迟时间（毫秒）
 // 存储状态提示框
 let statusBox = null;
 
+// 存储页面级弹窗元素
+let pageSelectedModal = null;
+let pageSummaryModal = null;
+let pageSettingsModal = null;
+
 /**
  * 创建状态提示框
  */
@@ -608,8 +613,140 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     cachedContent = null;
     cachedTimestamp = null;
     sendResponse({ success: true });
+  } else if (request.action === 'showSelectedModal') {
+    // 显示选中的内容弹窗
+    showPageSelectedModal(request.content);
+    sendResponse({ success: true });
+  } else if (request.action === 'showSummaryModal') {
+    // 显示总结结果弹窗
+    showPageSummaryModal(request.content);
+    sendResponse({ success: true });
   }
 
   // 返回 true 表示异步响应
   return true;
 });
+
+/**
+ * 创建页面级弹窗
+ */
+function createPageModals() {
+  // 如果已经创建，则返回
+  if (pageSelectedModal && pageSummaryModal) return;
+
+  try {
+    // 创建选中的内容弹窗
+    if (!pageSelectedModal) {
+      pageSelectedModal = document.createElement('div');
+      pageSelectedModal.id = 'web-summarizer-selected-modal';
+      pageSelectedModal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 2147483645;
+      `;
+      pageSelectedModal.innerHTML = `
+        <div style="background: white; border-radius: 12px; width: 90%; max-width: 600px; max-height: 80vh; overflow: hidden; box-shadow: 0 4px 20px rgba(100, 181, 246, 0.2);">
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; background: #64b5f6; border-bottom: 1px solid #e3f2fd;">
+            <span style="font-size: 16px; font-weight: 600; color: white;">选中的内容预览</span>
+            <span id="web-summarizer-close-selected-modal" style="font-size: 24px; color: rgba(255, 255, 255, 0.9); cursor: pointer; line-height: 1; user-select: none;">&times;</span>
+          </div>
+          <div id="web-summarizer-selected-content" style="padding: 20px; max-height: calc(80vh - 70px); overflow-y: auto; font-size: 14px; color: #555; line-height: 1.6; word-wrap: break-word; white-space: pre-wrap;"></div>
+        </div>
+      `;
+      document.body.appendChild(pageSelectedModal);
+
+      // 关闭按钮事件
+      pageSelectedModal.querySelector('#web-summarizer-close-selected-modal').addEventListener('click', () => {
+        pageSelectedModal.style.display = 'none';
+      });
+      // 点击背景关闭
+      pageSelectedModal.addEventListener('click', (e) => {
+        if (e.target === pageSelectedModal) {
+          pageSelectedModal.style.display = 'none';
+        }
+      });
+    }
+
+    // 创建总结结果弹窗
+    if (!pageSummaryModal) {
+      pageSummaryModal = document.createElement('div');
+      pageSummaryModal.id = 'web-summarizer-summary-modal';
+      pageSummaryModal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 2147483645;
+      `;
+      pageSummaryModal.innerHTML = `
+        <div style="background: white; border-radius: 12px; width: 90%; max-width: 600px; max-height: 80vh; overflow: hidden; box-shadow: 0 4px 20px rgba(100, 181, 246, 0.2);">
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; background: #64b5f6; border-bottom: 1px solid #e3f2fd;">
+            <span style="font-size: 16px; font-weight: 600; color: white;">总结结果预览</span>
+            <span id="web-summarizer-close-summary-modal" style="font-size: 24px; color: rgba(255, 255, 255, 0.9); cursor: pointer; line-height: 1; user-select: none;">&times;</span>
+          </div>
+          <div id="web-summarizer-summary-content" style="padding: 20px; max-height: calc(80vh - 70px); overflow-y: auto; font-size: 14px; color: #555; line-height: 1.6; word-wrap: break-word; white-space: pre-wrap; font-family: 'Consolas', 'Monaco', 'Courier New', monospace;"></div>
+        </div>
+      `;
+      document.body.appendChild(pageSummaryModal);
+
+      // 关闭按钮事件
+      pageSummaryModal.querySelector('#web-summarizer-close-summary-modal').addEventListener('click', () => {
+        pageSummaryModal.style.display = 'none';
+      });
+      // 点击背景关闭
+      pageSummaryModal.addEventListener('click', (e) => {
+        if (e.target === pageSummaryModal) {
+          pageSummaryModal.style.display = 'none';
+        }
+      });
+    }
+
+    console.log('页面级弹窗创建成功');
+  } catch (error) {
+    console.error('创建页面级弹窗失败:', error);
+  }
+}
+
+/**
+ * 显示选中的内容弹窗
+ */
+function showPageSelectedModal(content) {
+  try {
+    createPageModals();
+    const contentEl = document.getElementById('web-summarizer-selected-content');
+    if (contentEl) {
+      contentEl.textContent = content || '暂无内容';
+    }
+    pageSelectedModal.style.display = 'flex';
+  } catch (error) {
+    console.error('显示选中的内容弹窗失败:', error);
+  }
+}
+
+/**
+ * 显示总结结果弹窗
+ */
+function showPageSummaryModal(content) {
+  try {
+    createPageModals();
+    const contentEl = document.getElementById('web-summarizer-summary-content');
+    if (contentEl) {
+      contentEl.textContent = content || '暂无内容';
+    }
+    pageSummaryModal.style.display = 'flex';
+  } catch (error) {
+    console.error('显示总结结果弹窗失败:', error);
+  }
+}
