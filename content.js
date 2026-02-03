@@ -42,7 +42,7 @@ function createStatusBox() {
     statusBox.id = 'web-summarizer-status-box';
     statusBox.style.cssText = `
       position: fixed;
-      bottom: 30px;
+      top: 30px;
       left: 50%;
       transform: translateX(-50%);
       background: rgba(0, 0, 0, 0.85);
@@ -748,8 +748,8 @@ function createPageModals() {
               </div>
               <div style="margin-bottom: 20px;">
                 <label for="web-summarizer-summaryLength" style="display: block; margin-bottom: 8px; font-weight: 500; color: #333; font-size: 14px;">总结字数</label>
-                <input type="number" id="web-summarizer-summaryLength" style="width: 100%; padding: 10px 12px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 14px; color: #333; font-family: inherit; transition: border-color 0.2s ease;" placeholder="500" min="100" max="2000" step="50">
-                <div style="margin-top: 6px; font-size: 12px; color: #90a4ae;">控制总结结果的大致字数（默认 500 字）</div>
+                <input type="number" id="web-summarizer-summaryLength" style="width: 100%; padding: 10px 12px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 14px; color: #333; font-family: inherit; transition: border-color 0.2s ease;" placeholder="1000" min="100" max="2000" step="50">
+                <div style="margin-top: 6px; font-size: 12px; color: #90a4ae;">控制总结结果的大致字数（默认 1000 字）</div>
               </div>
               <div style="margin-bottom: 16px;">
                 <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
@@ -855,7 +855,7 @@ function showPageSummaryModal(content) {
 function loadPageSettings() {
   chrome.storage.sync.get({
     apiKey: 'ms-fdef09ef-0e3a-4e86-ab5e-53e7a5a1296c',
-    summaryLength: 500,
+    summaryLength: 1000,
     enableThinking: true,
     useAPI: true,
     contentType: 'summary'
@@ -891,7 +891,7 @@ function savePageSettings() {
   
   const settings = {
     apiKey: apiKeyInput.value.trim(),
-    summaryLength: parseInt(summaryLengthInput.value) || 500,
+    summaryLength: parseInt(summaryLengthInput.value) || 1000,
     enableThinking: enableThinkingCheckbox.checked,
     useAPI: useAPICheckbox.checked,
     contentType: contentTypeSelect.value

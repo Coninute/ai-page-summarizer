@@ -20,7 +20,7 @@ const API_CONFIG = {
 };
 
 // 全局设置
-let summaryLength = 500;
+let summaryLength = 1000;
 
 // 获取 DOM 元素
 const selectElementBtn = document.getElementById('selectElementBtn');
@@ -104,7 +104,7 @@ function closeSummaryModalFn() {
 function loadSettings() {
   chrome.storage.sync.get({
     apiKey: API_CONFIG.apiKey,
-    summaryLength: 500,
+    summaryLength: 1000,
     enableThinking: API_CONFIG.enableThinking,
     useAPI: API_CONFIG.useAPI,
     contentType: API_CONFIG.contentType
@@ -127,7 +127,7 @@ function loadSettings() {
 function saveSettings() {
   const settings = {
     apiKey: apiKeyInput.value.trim(),
-    summaryLength: parseInt(summaryLengthInput.value) || 500,
+    summaryLength: parseInt(summaryLengthInput.value) || 1000,
     enableThinking: enableThinkingCheckbox.checked,
     useAPI: useAPICheckbox.checked,
     contentType: contentTypeSelect ? contentTypeSelect.value : 'summary'
@@ -305,7 +305,7 @@ async function callAPISummarize(text) {
         },
         {
           role: 'user',
-          content: `请根据以下内容生成${API_CONFIG.contentType === 'summary' ? '总结' : API_CONFIG.contentType === 'blog' ? '博客文章' : API_CONFIG.contentType === 'article' ? '文章' : API_CONFIG.contentType === 'report' ? '报告' : '要点列表'}：\n\n${text.substring(0, 4000)}`
+          content: `请根据以下内容生成${API_CONFIG.contentType === 'summary' ? '总结' : API_CONFIG.contentType === 'blog' ? '博客文章' : API_CONFIG.contentType === 'article' ? '文章' : API_CONFIG.contentType === 'report' ? '报告' : '要点列表'}：\n\n${text.substring(0, 8000)}`
         }
       ],
       stream: false
@@ -344,41 +344,114 @@ async function callAPISummarize(text) {
     const choice = data.choices[0];
     const content = choice.message.content || choice.delta?.content || '';
 
-    // 解析 API 返回的内容
+    // 解析 API 返回的内容 - 支持多种内容类型的章节标题
     const lines = content.split('\n');
     let title = '';
     let summary = '';
     const keyPoints = [];
 
+    // 定义不同内容类型的章节标题模式
+    const sectionPatterns = {
+      'summary': ['## 摘要', '## Summary', '## 简介', '## 概述'],
+      'blog': ['## 引言', '## 正文', '## 内容', '## 主体', '## 结论', '## 结语'],
+      'article': ['## 摘要', '## 正文', '## 内容', '## 总结', '## 结论'],
+      'report': ['## 执行摘要', '## 主要发现', '## 关键发现', '## 建议', '## 结论'],
+      'bulletpoints': ['## 要点', '## 关键点', '## 关键要点', '## Key Points']
+    };
+
+    // 获取当前内容类型对应的章节模式
+    const currentType = API_CONFIG.contentType;
+    const patterns = sectionPatterns[currentType] || sectionPatterns['summary'];
+    
     let currentSection = '';
+    let collectingContent = false;
+    let summaryCollected = false;
+    
     lines.forEach(line => {
-      if (line.startsWith('# ')) {
-        title = line.replace('# ', '').trim();
-      } else if (line.startsWith('## 摘要') || line.startsWith('## Summary')) {
-        currentSection = 'summary';
-      } else if (line.startsWith('## 要点') || line.startsWith('## Key Points')) {
-        currentSection = 'points';
-      } else if (line.startsWith('- ')) {
-        if (currentSection === 'points') {
-          keyPoints.push(line.replace('- ', '').trim());
+      const trimmedLine = line.trim();
+      
+      // 提取标题（一级标题）
+      if (trimmedLine.startsWith('# ') && !trimmedLine.startsWith('##')) {
+        title = trimmedLine.replace('# ', '').trim();
+      }
+      // 检查是否为章节标题（二级标题）
+      else if (trimmedLine.startsWith('## ')) {
+        // 检查是否匹配当前内容类型的章节模式
+        const isSectionMatch = patterns.some(pattern => 
+          trimmedLine.startsWith(pattern)
+        );
+        
+        if (isSectionMatch) {
+          currentSection = trimmedLine.replace('## ', '').trim();
+          collectingContent = true;
+          // 如果是博客的"引言"或文章的"摘要"，将其内容作为总结的摘要
+          if ((currentType === 'blog' && trimmedLine.startsWith('## 引言')) ||
+              (currentType === 'article' && trimmedLine.startsWith('## 摘要')) ||
+              (currentType === 'report' && trimmedLine.startsWith('## 执行摘要')) ||
+              (currentType === 'summary' && trimmedLine.startsWith('## 摘要')) ||
+              (currentType === 'bulletpoints' && trimmedLine.startsWith('## 摘要'))) {
+            summaryCollected = false; // 开始收集摘要内容
+          }
+        } else {
+          // 如果不是已知章节，停止收集内容
+          collectingContent = false;
         }
-      } else if (currentSection === 'summary' && line.trim()) {
-        summary += line.trim() + ' ';
+      }
+      // 收集章节内容
+      else if (collectingContent && trimmedLine) {
+        // 如果是要点列表项
+        if (trimmedLine.startsWith('- ') || trimmedLine.startsWith('* ')) {
+          keyPoints.push(trimmedLine.replace(/^[-*]\s+/, '').trim());
+        } 
+        // 如果是其他内容（摘要、正文等）
+        else if (currentSection && !trimmedLine.startsWith('#') && !summaryCollected) {
+          // 收集第一个段落作为摘要
+          if (trimmedLine.length > 10) {
+            summary += trimmedLine + ' ';
+            // 对于博客/文章，收集足够的内容后停止
+            if (summary.length > 300) {
+              summaryCollected = true;
+            }
+          }
+        }
       }
     });
 
-    // 如果解析失败，使用整个内容作为摘要
+    // 如果解析失败，使用更智能的回退策略
     if (!title) {
-      title = text.substring(0, 200).replace(/\n/g, ' ').trim();
+      // 尝试从API返回的内容中提取标题，否则使用原文前200字符
+      const titleMatch = content.match(/^#\s+(.+)$/m);
+      title = titleMatch ? titleMatch[1].trim() : text.substring(0, 200).replace(/\n/g, ' ').trim();
     }
     if (!summary) {
-      summary = content.substring(0, 500).replace(/\n/g, ' ').trim();
+      // 如果没有提取到章节内容，使用API返回内容的前1000字符作为摘要
+      summary = content.substring(0, 1000).replace(/\n/g, ' ').trim();
     }
 
+    // 改进的关键点回退逻辑
+    let finalKeyPoints = keyPoints;
+    if (keyPoints.length === 0) {
+      // 尝试从API返回内容中提取更合适的要点
+      // 查找包含列表项的部分
+      const bulletMatches = content.match(/^[-*]\s+.+$/gm);
+      if (bulletMatches && bulletMatches.length > 0) {
+        finalKeyPoints = bulletMatches.slice(0, 5).map(item => item.replace(/^[-*]\s+/, '').trim());
+      } else {
+        // 如果没有列表项，尝试提取一些段落作为要点
+        const paragraphs = content.split(/\n\s*\n/).filter(p => p.trim().length > 30);
+        if (paragraphs.length > 0) {
+          finalKeyPoints = paragraphs.slice(0, 3).map(p => p.substring(0, 150).trim() + '...');
+        } else {
+          // 最后回退：使用内容的前300字符
+          finalKeyPoints = [content.substring(0, 300).trim()];
+        }
+      }
+    }
+    
     return {
       title: title,
       summary: summary.trim(),
-      keyPoints: keyPoints.length > 0 ? keyPoints : [content.substring(0, 200).trim()]
+      keyPoints: finalKeyPoints
     };
 
   } catch (error) {
