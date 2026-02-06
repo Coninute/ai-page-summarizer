@@ -10,6 +10,10 @@ let selectedElement = null;
 let cachedContent = null;
 let cachedTimestamp = null;
 
+// 缓存总结结果（与页面生命周期绑定）
+let cachedSummary = null;
+let cachedSummaryTimestamp = null;
+
 // 创建选择提示框
 let selectionBox = null;
 
@@ -38,7 +42,7 @@ function createStatusBox() {
     statusBox.id = 'web-summarizer-status-box';
     statusBox.style.cssText = `
       position: fixed;
-      top: 30px;
+      top: 20px;
       left: 50%;
       transform: translateX(-50%);
       background: rgba(0, 0, 0, 0.85);
@@ -98,6 +102,17 @@ function removeStatusBox() {
   }
 }
 
+// 在页面顶部短暂显示状态提示
+function showTransientStatus(message, type = 'info', duration = 3000) {
+  createStatusBox();
+  updateStatusBox(message, type);
+  if (duration > 0) {
+    setTimeout(() => {
+      removeStatusBox();
+    }, duration);
+  }
+}
+
 function createSelectionBox() {
   if (selectionBox) return;
   try {
@@ -105,14 +120,14 @@ function createSelectionBox() {
     container.id = 'web-summarizer-selection-box';
     container.style.cssText = `
       position: fixed;
-      top: 20px;
+      bottom: 20px;
       left: 50%;
       transform: translateX(-50%);
       background: white;
       color: #333;
       padding: 16px 24px;
       border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(100, 181, 246, 0.2);
+      box-shadow: 0 -2px 8px rgba(100, 181, 246, 0.2);
       border: 1px solid #e3f2fd;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
       font-size: 14px;
@@ -348,8 +363,7 @@ function confirmSelection() {
           },
           (response) => {
             if (chrome.runtime.lastError) {
-              // popup 当前没有打开，无法立即处理消息
-              console.warn('popup 未打开，缓存内容以便下次自动总结:', chrome.runtime.lastError);
+              // popup 当前没有打开，无法立即处理消息（只缓存，不再在控制台输出警告）
               cachedContent = content;
               cachedTimestamp = Date.now();
               // 不再尝试在内容脚本中调用 chrome.action.openPopup（该 API 在此环境不被支持）
@@ -427,6 +441,25 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     cachedContent = null;
     cachedTimestamp = null;
     sendResponse({ success: true });
+  } else if (request.action === 'cacheSummary') {
+    // 缓存总结结果
+    cachedSummary = request.summary || '';
+    cachedSummaryTimestamp = Date.now();
+    sendResponse({ success: true });
+  } else if (request.action === 'getCachedSummary') {
+    if (cachedSummary) {
+      sendResponse({
+        success: true,
+        summary: cachedSummary,
+        timestamp: cachedSummaryTimestamp,
+      });
+    } else {
+      sendResponse({ success: false, error: '没有缓存的总结结果' });
+    }
+  } else if (request.action === 'clearCachedSummary') {
+    cachedSummary = null;
+    cachedSummaryTimestamp = null;
+    sendResponse({ success: true });
   } else if (request.action === 'showSelectedModal') {
     showPageSelectedModal(request.content);
     sendResponse({ success: true });
@@ -435,6 +468,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     sendResponse({ success: true });
   } else if (request.action === 'showSettingsModal') {
     showPageSettingsModal();
+    sendResponse({ success: true });
+  } else if (request.action === 'showPageStatus') {
+    const { message, type, duration } = request;
+    showTransientStatus(message, type || 'info', typeof duration === 'number' ? duration : 3000);
     sendResponse({ success: true });
   }
   return true;

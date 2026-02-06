@@ -23,6 +23,9 @@ export function usePopupLogic() {
   const [selectedPreviewOpen, setSelectedPreviewOpen] = useState(false);
   const [summaryPreviewOpen, setSummaryPreviewOpen] = useState(false);
 
+  // 记录当前 selectedContent 的来源：'element' | 'page' | null
+  const [selectedSource, setSelectedSource] = useState(null);
+
   const [settingsState, setSettingsState] = useState({
     apiKey: apiConfig.apiKey,
     summaryLength: summaryLength,
@@ -54,6 +57,7 @@ export function usePopupLogic() {
     function handleMessage(request, sender, sendResponse) {
       if (request.action === 'elementPreview') {
         setSelectedContent(request.content || '');
+        setSelectedSource('element');
         sendResponse?.({ success: true });
       } else if (request.action === 'elementSelected') {
         const content = request.content || '';
@@ -86,17 +90,42 @@ export function usePopupLogic() {
   const ui = useMemo(() => ({
     isSelectionMode,
     isBusy,
-    hasSelectedContent: !!selectedContent,
+    // 只有元素选择时才显示“预览选中的内容”按钮
+    hasSelectedContent: selectedSource === 'element' && !!selectedContent,
     hasSummary: !!summaryResult,
     canDownload: !!summaryResult
-  }), [isSelectionMode, isBusy, selectedContent, summaryResult]);
+  }), [isSelectionMode, isBusy, selectedContent, summaryResult, selectedSource]);
 
   function showStatus(message, type = 'info', showSpinner = false) {
-    setStatus({ visible: true, message, type, showSpinner });
+    if (showSpinner) {
+      // 带 loading 的长任务提示（如“正在使用 AI 生成总结...”）只在插件内部显示
+      setStatus({ visible: true, message, type, showSpinner });
+    } else {
+      // 其他结果类的提示（成功 / 失败等）走页面级顶部提示
+      setStatus((prev) => ({ ...prev, visible: false }));
+      notifyPageStatus(message, type, false);
+    }
   }
 
   function hideStatus() {
     setStatus((prev) => ({ ...prev, visible: false }));
+  }
+
+  async function notifyPageStatus(message, type, showSpinner) {
+    // 如果是“加载中”，让提示常驻直到明确关闭；否则默认 3 秒自动消失
+    const duration = showSpinner ? 0 : 3000;
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tab || !tab.id) return;
+      await chrome.tabs.sendMessage(tab.id, {
+        action: 'showPageStatus',
+        message,
+        type,
+        duration,
+      });
+    } catch {
+      // 某些页面无法注入 content script 时忽略
+    }
   }
 
   async function withBusy(fn) {
@@ -171,6 +200,17 @@ export function usePopupLogic() {
     const markdown = formatToMarkdown(summaryData, apiConfig);
     setSummaryResult(markdown);
     window.summaryContent = markdown;
+
+    // 将总结结果缓存到当前页面对应的 content.js 中（与页面生命周期绑定）
+    try {
+      const tab = await getActiveTab();
+      await chrome.tabs.sendMessage(tab.id, {
+        action: 'cacheSummary',
+        summary: markdown,
+      });
+    } catch {
+      // content script 不可用时忽略
+    }
     showStatus('总结生成成功！', 'success', false);
     setTimeout(() => hideStatus(), 3000);
   }
@@ -243,6 +283,8 @@ export function usePopupLogic() {
       }
 
       const extractedText = result[0].result;
+      // 整页总结时，不认为这是“选中内容”，因此不展示“预览选中的内容”按钮
+      setSelectedSource('page');
       await summarizeContent(extractedText);
     });
   }
@@ -332,6 +374,14 @@ export function usePopupLogic() {
   async function checkCachedContent() {
     try {
       const tab = await getActiveTab();
+      // 1. 恢复已缓存的总结结果（如果有）
+      const summaryResp = await chrome.tabs.sendMessage(tab.id, { action: 'getCachedSummary' });
+      if (summaryResp && summaryResp.success && summaryResp.summary) {
+        setSummaryResult(summaryResp.summary);
+        window.summaryContent = summaryResp.summary;
+      }
+
+      // 2. 如果之前只缓存了“待总结的内容”，则自动触发一次总结
       const response = await chrome.tabs.sendMessage(tab.id, { action: 'getCachedContent' });
       if (response && response.success && response.content) {
         showStatus(`自动总结之前选中的内容（${response.content.length} 字符）...`, 'info', true);
