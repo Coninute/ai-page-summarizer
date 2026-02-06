@@ -1,5 +1,5 @@
-// content.js - 内容脚本
-// 这个脚本会在每个网页加载时自动注入
+// 注意：该文件是从项目根目录的 content.js 拷贝过来的，用于在 Vite 构建后一起输出到 dist。
+// 如果需要修改内容脚本逻辑，请以此文件为准，并同步更新根目录版本（或删除根目录版本以避免混淆）。
 
 console.log('网页内容总结助手已加载');
 
@@ -31,12 +31,8 @@ let pageSelectedModal = null;
 let pageSummaryModal = null;
 let pageSettingsModal = null;
 
-/**
- * 创建状态提示框
- */
 function createStatusBox() {
   if (statusBox) return;
-
   try {
     statusBox = document.createElement('div');
     statusBox.id = 'web-summarizer-status-box';
@@ -61,23 +57,16 @@ function createStatusBox() {
       text-align: center;
     `;
     statusBox.textContent = '请悬停在元素上，单击即可直接总结';
-
     document.body.appendChild(statusBox);
   } catch (error) {
     console.error('创建状态提示框失败:', error);
   }
 }
 
-/**
- * 更新状态提示框
- */
 function updateStatusBox(message, type = 'info') {
   if (!statusBox) return;
-
   try {
     statusBox.textContent = message;
-
-    // 根据类型设置不同的背景色
     switch (type) {
       case 'success':
         statusBox.style.background = 'rgba(39, 174, 96, 0.9)';
@@ -98,9 +87,6 @@ function updateStatusBox(message, type = 'info') {
   }
 }
 
-/**
- * 移除状态提示框
- */
 function removeStatusBox() {
   if (statusBox) {
     try {
@@ -112,14 +98,9 @@ function removeStatusBox() {
   }
 }
 
-/**
- * 创建选择提示框
- */
 function createSelectionBox() {
   if (selectionBox) return;
-
   try {
-    // 创建主容器
     const container = document.createElement('div');
     container.id = 'web-summarizer-selection-box';
     container.style.cssText = `
@@ -146,7 +127,6 @@ function createSelectionBox() {
       min-width: 300px;
     `;
 
-    // 添加提示文本
     const textElement = document.createElement('div');
     textElement.textContent = '悬停选择元素，单击即可总结';
     textElement.style.cssText = `
@@ -158,7 +138,6 @@ function createSelectionBox() {
     `;
     container.appendChild(textElement);
 
-    // 添加按钮容器
     const buttonContainer = document.createElement('div');
     buttonContainer.style.cssText = `
       display: flex;
@@ -166,7 +145,6 @@ function createSelectionBox() {
       justify-content: center;
     `;
 
-    // 添加关闭按钮
     const closeButton = document.createElement('button');
     closeButton.textContent = '×';
     closeButton.style.cssText = `
@@ -193,16 +171,12 @@ function createSelectionBox() {
 
     container.appendChild(buttonContainer);
     document.body.appendChild(container);
-
     selectionBox = container;
   } catch (error) {
     console.error('创建选择提示框失败:', error);
   }
 }
 
-/**
- * 移除选择提示框
- */
 function removeSelectionBox() {
   if (selectionBox) {
     try {
@@ -214,21 +188,14 @@ function removeSelectionBox() {
   }
 }
 
-/**
- * 高亮元素
- */
 function highlightElement(element) {
   if (!element) return;
-
   try {
-    // 移除之前的高亮
-    document.querySelectorAll('.web-summarizer-highlight').forEach(el => {
+    document.querySelectorAll('.web-summarizer-highlight').forEach((el) => {
       el.classList.remove('web-summarizer-highlight');
       el.style.outline = '';
       el.style.outlineOffset = '';
     });
-
-    // 添加新高亮
     element.classList.add('web-summarizer-highlight');
     element.style.outline = '3px solid #667eea';
     element.style.outlineOffset = '2px';
@@ -237,12 +204,9 @@ function highlightElement(element) {
   }
 }
 
-/**
- * 移除所有高亮
- */
 function removeHighlight() {
   try {
-    document.querySelectorAll('.web-summarizer-highlight').forEach(el => {
+    document.querySelectorAll('.web-summarizer-highlight').forEach((el) => {
       el.classList.remove('web-summarizer-highlight');
       el.style.outline = '';
       el.style.outlineOffset = '';
@@ -252,97 +216,50 @@ function removeHighlight() {
   }
 }
 
-/**
- * 开始元素选择模式
- */
 function startSelection() {
   console.log('开始元素选择模式');
-
-  if (isSelectionActive) {
-    console.log('选择模式已激活');
-    return;
-  }
-
+  if (isSelectionActive) return;
   try {
-    // 创建提示框
     createSelectionBox();
-
-    // 创建状态提示框
     createStatusBox();
     updateStatusBox('请悬停在元素上，单击即可直接总结', 'info');
-
-    // 添加鼠标事件监听（捕获阶段，优先级更高）
     document.body.addEventListener('mouseover', handleMouseOver, true);
     document.body.addEventListener('mouseout', handleMouseOut, true);
     document.body.addEventListener('click', handleClick, true);
-
-    // 标记为激活状态
     isSelectionActive = true;
-
-    console.log('选择模式已启动，等待用户操作');
   } catch (error) {
     console.error('启动选择模式失败:', error);
     stopSelection();
   }
 }
 
-/**
- * 停止元素选择模式
- */
 function stopSelection() {
   console.log('停止元素选择模式');
-
-  if (!isSelectionActive) {
-    console.log('选择模式未激活');
-    return;
-  }
-
+  if (!isSelectionActive) return;
   try {
-    // 移除提示框
     removeSelectionBox();
-
-    // 移除状态提示框
     removeStatusBox();
-
-    // 移除高亮
     removeHighlight();
-
-    // 移除事件监听（使用捕获阶段）
     document.body.removeEventListener('mouseover', handleMouseOver, true);
     document.body.removeEventListener('mouseout', handleMouseOut, true);
     document.body.removeEventListener('click', handleClick, true);
-
-    // 标记为非激活状态
     isSelectionActive = false;
-
-    console.log('选择模式已停止');
   } catch (error) {
     console.error('停止选择模式失败:', error);
   }
 }
 
-/**
- * 处理鼠标悬停
- */
 function handleMouseOver(e) {
-  // 忽略提示框
-  if (e.target.id === 'web-summarizer-selection-box' ||
-      e.target.closest('#web-summarizer-selection-box')) {
+  if (e.target.id === 'web-summarizer-selection-box' || e.target.closest('#web-summarizer-selection-box')) {
     return;
   }
-
   try {
-    // 保存当前悬停的元素
     hoveredElement = e.target;
-
-    // 高亮元素
     highlightElement(hoveredElement);
-
-    // 提取内容并更新状态提示框
     const text = hoveredElement.innerText || hoveredElement.textContent || '';
     const tagName = hoveredElement.tagName.toLowerCase();
     const className = hoveredElement.className || '';
-    const textPreview = text.length > 50 ? text.substring(0, 50) + '...' : text;
+    const textPreview = text.length > 50 ? `${text.substring(0, 50)}...` : text;
 
     let statusMessage = `已选中: <${tagName}>`;
     if (className) {
@@ -353,17 +270,18 @@ function handleMouseOver(e) {
 
     updateStatusBox(statusMessage, 'info');
 
-    // 发送预览消息到 popup（如果 popup 打开的话）
     try {
-      chrome.runtime.sendMessage({
-        action: 'elementPreview',
-        content: text
-      }, (response) => {
-        // popup 可能关闭了，忽略错误
-        if (chrome.runtime.lastError) {
-          console.log('popup 已关闭，不显示预览');
+      chrome.runtime.sendMessage(
+        {
+          action: 'elementPreview',
+          content: text
+        },
+        () => {
+          if (chrome.runtime.lastError) {
+            console.log('popup 已关闭，不显示预览');
+          }
         }
-      });
+      );
     } catch (err) {
       console.log('发送预览消息失败:', err);
     }
@@ -372,58 +290,35 @@ function handleMouseOver(e) {
   }
 }
 
-/**
- * 处理鼠标移出
- */
 function handleMouseOut(e) {
-  // 忽略提示框
-  if (e.target.id === 'web-summarizer-selection-box' ||
-      e.target.closest('#web-summarizer-selection-box')) {
+  if (e.target.id === 'web-summarizer-selection-box' || e.target.closest('#web-summarizer-selection-box')) {
     return;
   }
-
   try {
-    // 移除高亮
     try {
       e.target.style.outline = '';
       e.target.style.outlineOffset = '';
-    } catch (err) {
-      // 忽略错误
+    } catch {
+      // ignore
     }
   } catch (error) {
     console.error('处理鼠标移出失败:', error);
   }
 }
 
-/**
- * 处理点击事件
- */
 function handleClick(e) {
-  // 忽略提示框
-  if (e.target.id === 'web-summarizer-selection-box' ||
-      e.target.closest('#web-summarizer-selection-box')) {
+  if (e.target.id === 'web-summarizer-selection-box' || e.target.closest('#web-summarizer-selection-box')) {
     return;
   }
-
   try {
-    // 阻止默认行为和事件冒泡
     e.preventDefault();
     e.stopPropagation();
     e.stopImmediatePropagation();
 
-    console.log('========== 点击事件触发 ==========');
-    console.log('当前悬停元素:', hoveredElement);
-    console.log('点击目标:', e.target);
-
-    // 使用悬停的元素或点击目标作为选中的元素
     const elementToUse = hoveredElement || e.target;
     if (elementToUse) {
       selectedElement = elementToUse;
     }
-
-    console.log('选中的元素:', selectedElement);
-
-    // 直接调用确认选择函数
     confirmSelection();
   } catch (error) {
     console.error('处理点击事件失败:', error);
@@ -431,119 +326,56 @@ function handleClick(e) {
   }
 }
 
-/**
- * 确认选择并开始总结
- */
 function confirmSelection() {
   try {
-    console.log('========== confirmSelection 被调用 ==========');
-    console.log('selectedElement:', selectedElement);
-
     if (!selectedElement) {
-      console.log('没有可用的元素');
       updateStatusBox('请先悬停在元素上', 'error');
       return;
     }
-
-    // 提取内容
     const content = extractContentFromElement(selectedElement);
-    console.log('提取的内容长度:', content.length);
-
     if (!content || content.length < 10) {
-      console.log('选中的内容太短');
       updateStatusBox('选中的内容太短，请选择其他元素', 'error');
       return;
     }
-
-    console.log('内容提取成功，准备发送到 popup');
-
-    // 更新状态提示
     updateStatusBox(`正在总结 ${content.length} 个字符的内容...`, 'info');
-
-    // 先停止选择模式
     stopSelection();
-
-    // 发送消息到 popup（稍微延迟，确保选择模式已停止）
     setTimeout(() => {
       try {
-        console.log('发送消息到 popup');
-        console.log('消息内容:', { action: 'elementSelected', contentLength: content.length });
-
-        chrome.runtime.sendMessage({
-          action: 'elementSelected',
-          content: content
-        }, (response) => {
-          if (chrome.runtime.lastError) {
-            console.error('发送消息失败，popup 已关闭:', chrome.runtime.lastError);
-
-            // 缓存内容
-            cachedContent = content;
-            cachedTimestamp = Date.now();
-            console.log('内容已缓存，准备自动打开 popup');
-
-            // 自动打开插件弹窗
-            try {
-              chrome.action.openPopup().then(() => {
-                console.log('Popup 已自动打开');
-                // 显示成功提示
-                createStatusBox();
-                updateStatusBox('✓ 内容已选中，正在总结...', 'success');
-                setTimeout(() => removeStatusBox(), 3000);
-              }).catch((err) => {
-                console.error('自动打开 popup 失败:', err);
-                // 如果自动打开失败，显示手动提示
-                createStatusBox();
-                updateStatusBox('✓ 内容已选中，请重新打开插件', 'info');
-                setTimeout(() => removeStatusBox(), 5000);
-              });
-            } catch (popupError) {
-              console.error('调用 openPopup 出错:', popupError);
-              // 备用提示
+        chrome.runtime.sendMessage(
+          {
+            action: 'elementSelected',
+            content
+          },
+          (response) => {
+            if (chrome.runtime.lastError) {
+              // popup 当前没有打开，无法立即处理消息
+              console.warn('popup 未打开，缓存内容以便下次自动总结:', chrome.runtime.lastError);
+              cachedContent = content;
+              cachedTimestamp = Date.now();
+              // 不再尝试在内容脚本中调用 chrome.action.openPopup（该 API 在此环境不被支持）
+              // 仅给出友好提示，提示用户手动点击扩展图标
               createStatusBox();
-              updateStatusBox('✓ 内容已选中，请重新打开插件', 'info');
+              updateStatusBox('✓ 内容已选中，请点击右上角插件图标查看总结', 'info');
               setTimeout(() => removeStatusBox(), 5000);
-            }
-          } else {
-            console.log('消息发送成功，响应:', response);
-            // 清除缓存
-            cachedContent = null;
-            cachedTimestamp = null;
-
-            // 显示成功提示（如果提示框还在的话）
-            if (statusBox) {
-              updateStatusBox('总结请求已发送，请查看弹窗', 'success');
+            } else {
+              cachedContent = null;
+              cachedTimestamp = null;
+              if (statusBox) {
+                updateStatusBox('总结请求已发送，请查看弹窗', 'success');
+              }
             }
           }
-        });
+        );
       } catch (error) {
         console.error('发送消息出错:', error);
-
-        // 缓存内容
+        // 发送失败，同样缓存内容，并提示用户手动打开插件
         cachedContent = content;
         cachedTimestamp = Date.now();
-
-        // 尝试自动打开 popup
-        try {
-          chrome.action.openPopup().then(() => {
-            console.log('Popup 已自动打开');
-            createStatusBox();
-            updateStatusBox('✓ 内容已选中，正在总结...', 'success');
-            setTimeout(() => removeStatusBox(), 3000);
-          }).catch((err) => {
-            console.error('自动打开 popup 失败:', err);
-            createStatusBox();
-            updateStatusBox('✓ 内容已选中，请重新打开插件', 'info');
-            setTimeout(() => removeStatusBox(), 5000);
-          });
-        } catch (popupError) {
-          console.error('调用 openPopup 出错:', popupError);
-          createStatusBox();
-          updateStatusBox('✓ 内容已选中，请重新打开插件', 'info');
-          setTimeout(() => removeStatusBox(), 5000);
-        }
+        createStatusBox();
+        updateStatusBox('✓ 内容已选中，请点击右上角插件图标查看总结', 'info');
+        setTimeout(() => removeStatusBox(), 5000);
       }
     }, 100);
-
   } catch (error) {
     console.error('确认选择失败:', error);
     updateStatusBox('确认选择失败，请重试', 'error');
@@ -551,20 +383,13 @@ function confirmSelection() {
   }
 }
 
-/**
- * 从元素中提取内容
- */
 function extractContentFromElement(element) {
   try {
-    // 获取元素的文本内容
     let text = element.innerText || element.textContent || '';
-
-    // 清理文本
     text = text
-      .replace(/\s+/g, ' ')  // 合并空白字符
-      .replace(/\n+/g, '\n')  // 合并换行
+      .replace(/\s+/g, ' ')
+      .replace(/\n+/g, '\n')
       .trim();
-
     return text;
   } catch (error) {
     console.error('提取内容失败:', error);
@@ -572,74 +397,52 @@ function extractContentFromElement(element) {
   }
 }
 
-// 监听来自 popup 的消息
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'ping') {
-    // 响应 ping 请求，用于检查 content script 是否已加载
     sendResponse({ success: true, message: 'pong' });
   } else if (request.action === 'startSelection') {
-    // 开始选择模式
     startSelection();
     sendResponse({ success: true });
   } else if (request.action === 'stopSelection') {
-    // 停止选择模式
     stopSelection();
     sendResponse({ success: true });
   } else if (request.action === 'extractContent') {
-    // 提取选中的元素内容
     if (selectedElement) {
       const content = extractContentFromElement(selectedElement);
-      sendResponse({ success: true, content: content });
+      sendResponse({ success: true, content });
     } else {
       sendResponse({ success: false, error: '没有选中的元素' });
     }
   } else if (request.action === 'getCachedContent') {
-    // 获取缓存的内容
-    console.log('popup 请求缓存内容');
     if (cachedContent) {
-      console.log('返回缓存内容，长度:', cachedContent.length);
       sendResponse({
         success: true,
         content: cachedContent,
         timestamp: cachedTimestamp
       });
     } else {
-      console.log('没有缓存内容');
       sendResponse({ success: false, error: '没有缓存的内容' });
     }
   } else if (request.action === 'clearCachedContent') {
-    // 清除缓存的内容
-    console.log('清除缓存内容');
     cachedContent = null;
     cachedTimestamp = null;
     sendResponse({ success: true });
   } else if (request.action === 'showSelectedModal') {
-    // 显示选中的内容弹窗
     showPageSelectedModal(request.content);
     sendResponse({ success: true });
   } else if (request.action === 'showSummaryModal') {
-    // 显示总结结果弹窗
     showPageSummaryModal(request.content);
     sendResponse({ success: true });
   } else if (request.action === 'showSettingsModal') {
-    // 显示设置弹窗
     showPageSettingsModal();
     sendResponse({ success: true });
   }
-
-  // 返回 true 表示异步响应
   return true;
 });
 
-/**
- * 创建页面级弹窗
- */
 function createPageModals() {
-  // 如果已经创建，则返回
   if (pageSelectedModal && pageSummaryModal && pageSettingsModal) return;
-
   try {
-    // 创建选中的内容弹窗
     if (!pageSelectedModal) {
       pageSelectedModal = document.createElement('div');
       pageSelectedModal.id = 'web-summarizer-selected-modal';
@@ -665,12 +468,11 @@ function createPageModals() {
         </div>
       `;
       document.body.appendChild(pageSelectedModal);
-
-      // 关闭按钮事件
-      pageSelectedModal.querySelector('#web-summarizer-close-selected-modal').addEventListener('click', () => {
-        pageSelectedModal.style.display = 'none';
-      });
-      // 点击背景关闭
+      pageSelectedModal
+        .querySelector('#web-summarizer-close-selected-modal')
+        .addEventListener('click', () => {
+          pageSelectedModal.style.display = 'none';
+        });
       pageSelectedModal.addEventListener('click', (e) => {
         if (e.target === pageSelectedModal) {
           pageSelectedModal.style.display = 'none';
@@ -678,7 +480,6 @@ function createPageModals() {
       });
     }
 
-    // 创建总结结果弹窗
     if (!pageSummaryModal) {
       pageSummaryModal = document.createElement('div');
       pageSummaryModal.id = 'web-summarizer-summary-modal';
@@ -704,12 +505,11 @@ function createPageModals() {
         </div>
       `;
       document.body.appendChild(pageSummaryModal);
-
-      // 关闭按钮事件
-      pageSummaryModal.querySelector('#web-summarizer-close-summary-modal').addEventListener('click', () => {
-        pageSummaryModal.style.display = 'none';
-      });
-      // 点击背景关闭
+      pageSummaryModal
+        .querySelector('#web-summarizer-close-summary-modal')
+        .addEventListener('click', () => {
+          pageSummaryModal.style.display = 'none';
+        });
       pageSummaryModal.addEventListener('click', (e) => {
         if (e.target === pageSummaryModal) {
           pageSummaryModal.style.display = 'none';
@@ -717,7 +517,6 @@ function createPageModals() {
       });
     }
 
-    // 创建设置弹窗
     if (!pageSettingsModal) {
       pageSettingsModal = document.createElement('div');
       pageSettingsModal.id = 'web-summarizer-settings-modal';
@@ -783,43 +582,33 @@ function createPageModals() {
         </div>
       `;
       document.body.appendChild(pageSettingsModal);
-
-      // 关闭按钮事件
-      pageSettingsModal.querySelector('#web-summarizer-close-settings-modal').addEventListener('click', () => {
-        pageSettingsModal.style.display = 'none';
-      });
-      // 点击背景关闭
+      pageSettingsModal
+        .querySelector('#web-summarizer-close-settings-modal')
+        .addEventListener('click', () => {
+          pageSettingsModal.style.display = 'none';
+        });
       pageSettingsModal.addEventListener('click', (e) => {
         if (e.target === pageSettingsModal) {
           pageSettingsModal.style.display = 'none';
         }
       });
-
-      // 表单提交事件
       const settingsForm = pageSettingsModal.querySelector('#web-summarizer-settings-form');
       settingsForm.addEventListener('submit', (e) => {
         e.preventDefault();
         savePageSettings();
       });
-
-      // 取消按钮事件
-      pageSettingsModal.querySelector('#web-summarizer-cancel-settings').addEventListener('click', () => {
-        pageSettingsModal.style.display = 'none';
-      });
-
-      // 加载设置
+      pageSettingsModal
+        .querySelector('#web-summarizer-cancel-settings')
+        .addEventListener('click', () => {
+          pageSettingsModal.style.display = 'none';
+        });
       loadPageSettings();
     }
-
-    console.log('页面级弹窗创建成功');
   } catch (error) {
     console.error('创建页面级弹窗失败:', error);
   }
 }
 
-/**
- * 显示选中的内容弹窗
- */
 function showPageSelectedModal(content) {
   try {
     createPageModals();
@@ -833,9 +622,6 @@ function showPageSelectedModal(content) {
   }
 }
 
-/**
- * 显示总结结果弹窗
- */
 function showPageSummaryModal(content) {
   try {
     createPageModals();
@@ -849,77 +635,68 @@ function showPageSummaryModal(content) {
   }
 }
 
-/**
- * 加载页面设置
- */
 function loadPageSettings() {
-  chrome.storage.sync.get({
-    apiKey: 'ms-fdef09ef-0e3a-4e86-ab5e-53e7a5a1296c',
-    summaryLength: 1000,
-    enableThinking: true,
-    useAPI: true,
-    contentType: 'summary'
-  }, function(items) {
-    const apiKeyInput = document.getElementById('web-summarizer-apiKey');
-    const summaryLengthInput = document.getElementById('web-summarizer-summaryLength');
-    const enableThinkingCheckbox = document.getElementById('web-summarizer-enableThinking');
-    const useAPICheckbox = document.getElementById('web-summarizer-useAPI');
-    const contentTypeSelect = document.getElementById('web-summarizer-contentType');
-    
-    if (apiKeyInput) apiKeyInput.value = items.apiKey;
-    if (summaryLengthInput) summaryLengthInput.value = items.summaryLength;
-    if (enableThinkingCheckbox) enableThinkingCheckbox.checked = items.enableThinking;
-    if (useAPICheckbox) useAPICheckbox.checked = items.useAPI;
-    if (contentTypeSelect) contentTypeSelect.value = items.contentType;
-  });
+  chrome.storage.sync.get(
+    {
+      apiKey: 'ms-fdef09ef-0e3a-4e86-ab5e-53e7a5a1296c',
+      summaryLength: 1000,
+      enableThinking: true,
+      useAPI: true,
+      contentType: 'summary'
+    },
+    (items) => {
+      const apiKeyInput = document.getElementById('web-summarizer-apiKey');
+      const summaryLengthInput = document.getElementById('web-summarizer-summaryLength');
+      const enableThinkingCheckbox = document.getElementById('web-summarizer-enableThinking');
+      const useAPICheckbox = document.getElementById('web-summarizer-useAPI');
+      const contentTypeSelect = document.getElementById('web-summarizer-contentType');
+
+      if (apiKeyInput) apiKeyInput.value = items.apiKey;
+      if (summaryLengthInput) summaryLengthInput.value = items.summaryLength;
+      if (enableThinkingCheckbox) enableThinkingCheckbox.checked = items.enableThinking;
+      if (useAPICheckbox) useAPICheckbox.checked = items.useAPI;
+      if (contentTypeSelect) contentTypeSelect.value = items.contentType;
+    }
+  );
 }
 
-/**
- * 保存页面设置
- */
 function savePageSettings() {
   const apiKeyInput = document.getElementById('web-summarizer-apiKey');
   const summaryLengthInput = document.getElementById('web-summarizer-summaryLength');
   const enableThinkingCheckbox = document.getElementById('web-summarizer-enableThinking');
   const useAPICheckbox = document.getElementById('web-summarizer-useAPI');
   const contentTypeSelect = document.getElementById('web-summarizer-contentType');
-  
+
   if (!apiKeyInput || !summaryLengthInput || !enableThinkingCheckbox || !useAPICheckbox || !contentTypeSelect) {
     console.error('设置表单元素未找到');
     return;
   }
-  
+
   const settings = {
     apiKey: apiKeyInput.value.trim(),
-    summaryLength: parseInt(summaryLengthInput.value) || 1000,
+    summaryLength: parseInt(summaryLengthInput.value, 10) || 1000,
     enableThinking: enableThinkingCheckbox.checked,
     useAPI: useAPICheckbox.checked,
     contentType: contentTypeSelect.value
   };
-  
-  chrome.storage.sync.set(settings, function() {
-    console.log('设置已保存');
-    // 隐藏弹窗
+
+  chrome.storage.sync.set(settings, () => {
     if (pageSettingsModal) {
       pageSettingsModal.style.display = 'none';
     }
-    // 显示成功提示
     createStatusBox();
     updateStatusBox('设置已保存', 'success');
     setTimeout(() => removeStatusBox(), 2000);
   });
 }
 
-/**
- * 显示设置弹窗
- */
 function showPageSettingsModal() {
   try {
     createPageModals();
-    // 确保加载最新设置
     loadPageSettings();
     pageSettingsModal.style.display = 'flex';
   } catch (error) {
     console.error('显示设置弹窗失败:', error);
   }
 }
+

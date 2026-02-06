@@ -1,0 +1,25 @@
+# 依赖与构建产物
+node_modules/
+dist/
+
+# 日志文件
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# 编辑器与系统文件
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# 打包缓存
+.eslintcache
+.sass-cache/
+
+# 环境变量（如后续需要）
+.env
+.env.*.local
+
