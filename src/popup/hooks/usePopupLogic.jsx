@@ -20,11 +20,7 @@ export function usePopupLogic() {
   });
 
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
-  const [selectedPreviewOpen, setSelectedPreviewOpen] = useState(false);
   const [summaryPreviewOpen, setSummaryPreviewOpen] = useState(false);
-
-  // 记录当前 selectedContent 的来源：'element' | 'page' | null
-  const [selectedSource, setSelectedSource] = useState(null);
 
   const [settingsState, setSettingsState] = useState({
     apiKey: apiConfig.apiKey,
@@ -55,11 +51,7 @@ export function usePopupLogic() {
   // 监听来自 content.js 的消息（元素预览与选中）
   useEffect(() => {
     function handleMessage(request, sender, sendResponse) {
-      if (request.action === 'elementPreview') {
-        setSelectedContent(request.content || '');
-        setSelectedSource('element');
-        sendResponse?.({ success: true });
-      } else if (request.action === 'elementSelected') {
+      if (request.action === 'elementSelected') {
         const content = request.content || '';
         setIsSelectionMode(false);
         setIsBusy(true);
@@ -90,11 +82,9 @@ export function usePopupLogic() {
   const ui = useMemo(() => ({
     isSelectionMode,
     isBusy,
-    // 只有元素选择时才显示“预览选中的内容”按钮
-    hasSelectedContent: selectedSource === 'element' && !!selectedContent,
     hasSummary: !!summaryResult,
     canDownload: !!summaryResult
-  }), [isSelectionMode, isBusy, selectedContent, summaryResult, selectedSource]);
+  }), [isSelectionMode, isBusy, summaryResult]);
 
   function showStatus(message, type = 'info', showSpinner = false) {
     if (showSpinner) {
@@ -179,8 +169,6 @@ export function usePopupLogic() {
     if (!content || content.length < 10) {
       throw new Error('选中的内容太短，无法进行总结');
     }
-
-    setSelectedContent(content);
 
     showStatus(apiConfig.useAPI ? '正在使用 AI 生成总结...' : '正在生成本地总结...', 'info', true);
 
@@ -283,23 +271,10 @@ export function usePopupLogic() {
       }
 
       const extractedText = result[0].result;
-      // 整页总结时，不认为这是“选中内容”，因此不展示“预览选中的内容”按钮
-      setSelectedSource('page');
+      // 整页总结不需要“预览选中的内容”，因此清空选中内容
+      setSelectedContent('');
       await summarizeContent(extractedText);
     });
-  }
-
-  async function onPreviewSelected() {
-    try {
-      const tab = await getActiveTab();
-      await chrome.tabs.sendMessage(tab.id, {
-        action: 'showSelectedModal',
-        content: selectedContent
-      });
-    } catch {
-      // 回退：在 popup 内部展示预览
-      setSelectedPreviewOpen(true);
-    }
   }
 
   async function onPreviewSummary() {
@@ -402,22 +377,18 @@ export function usePopupLogic() {
       onStartSelection,
       onCancelSelection,
       onSummarizePage,
-      onPreviewSelected,
       onPreviewSummary,
       onDownload,
       onOpenSettings,
       onCloseSettings,
       onSettingsChange,
       onSaveSettings,
-      onCloseSelectedPreview: () => setSelectedPreviewOpen(false),
       onCloseSummaryPreview: () => setSummaryPreviewOpen(false),
     },
     modals: {
       settingsOpen: settingsModalOpen,
       settings: settingsState,
-      selectedPreviewOpen,
       summaryPreviewOpen,
-      selectedContent,
       summaryResult,
     },
   };

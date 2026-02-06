@@ -3,7 +3,6 @@ import React from 'react';
 export function PopupButtons({ ui, handlers }) {
   const {
     isSelectionMode,
-    hasSelectedContent,
     hasSummary,
     canDownload,
   } = ui;
@@ -42,19 +41,10 @@ export function PopupButtons({ ui, handlers }) {
         </button>
       )}
 
-      {hasSelectedContent && (
-        <button
-          className="btn btn-preview"
-          onClick={handlers.onPreviewSelected}
-          type="button"
-        >
-          预览选中的内容
-        </button>
-      )}
-
       {hasSummary && (
         <button
           className="btn btn-preview"
+          style={{ gridColumn: 'span 2' }}
           onClick={handlers.onPreviewSummary}
           type="button"
         >
