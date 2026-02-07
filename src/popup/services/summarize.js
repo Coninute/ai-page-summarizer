@@ -133,6 +133,9 @@ export async function callAPISummarize(text, apiConfig, summaryLength) {
 
   if (!response.ok) {
     const errorText = await response.text();
+    if (response.status === 401 || response.status === 403) {
+      throw new Error('API Key 无效或已失效，请检查设置中的 API Key');
+    }
     throw new Error(`API 请求失败: ${response.status} ${response.statusText} - ${errorText}`);
   }
 

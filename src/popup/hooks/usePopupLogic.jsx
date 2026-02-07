@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { createApiConfig, loadSettingsFromStorage, saveSettingsToStorage } from '../services/settings';
+import { createApiConfig, loadSettingsFromStorage, saveSettingsToStorage, isValidApiKey } from '../services/settings';
 import { mockSummarize, formatToMarkdown, callAPISummarize } from '../services/summarize';
 import { downloadMarkdown } from '../services/download';
 
@@ -45,7 +45,9 @@ export function usePopupLogic() {
   }, []);
 
   useEffect(() => {
-    checkCachedContent();
+    checkCachedContent().catch(() => {
+      // content script 未注入时 sendMessage 会拒绝，静默忽略
+    });
   }, []);
 
   // 监听来自 content.js 的消息（元素预览与选中）
@@ -170,14 +172,31 @@ export function usePopupLogic() {
       throw new Error('选中的内容太短，无法进行总结');
     }
 
+    // 总结前校验：开启 API 但未配置或密钥无效时，直接提示并中止
+    if (apiConfig.useAPI) {
+      if (!isValidApiKey(apiConfig.apiKey)) {
+        showStatus('请先在设置中填写有效的 API Key（密钥未配置或不存在）', 'error', false);
+        setTimeout(() => hideStatus(), 5000);
+        setSettingsModalOpen(true);
+        return;
+      }
+    }
+
     showStatus(apiConfig.useAPI ? '正在使用 AI 生成总结...' : '正在生成本地总结...', 'info', true);
 
     let summaryData;
-    if (apiConfig.useAPI && apiConfig.apiKey !== 'YOUR_API_KEY_HERE') {
+    if (apiConfig.useAPI) {
       try {
         summaryData = await callAPISummarize(content, apiConfig, summaryLength);
       } catch (error) {
-        console.error('API 调用失败，使用本地模拟:', error);
+        console.error('API 调用失败:', error);
+        const isKeyError = error.message && (error.message.includes('API Key') || error.message.includes('无效') || error.message.includes('失效'));
+        if (isKeyError) {
+          showStatus('密钥错误或已失效，请检查设置中的 API Key', 'error', false);
+          setTimeout(() => hideStatus(), 5000);
+          setSettingsModalOpen(true);
+          return;
+        }
         showStatus('API 调用失败，使用本地总结...', 'info', true);
         summaryData = mockSummarize(content, apiConfig, summaryLength);
       }

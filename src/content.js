@@ -721,7 +721,7 @@ function injectSummaryMarkdownStyles() {
 function loadPageSettings() {
   chrome.storage.sync.get(
     {
-      apiKey: 'ms-fdef09ef-0e3a-4e86-ab5e-53e7a5a1296c',
+      apiKey: '',
       summaryLength: 1000,
       enableThinking: true,
       useAPI: true,

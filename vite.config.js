@@ -1,4 +1,3 @@
-import path from 'path';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
@@ -10,12 +9,9 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     rollupOptions: {
-      input: {
-        popup: 'index.html',
-        content: path.resolve(__dirname, 'src/content.js')
-      },
+      input: 'index.html',
       output: {
-        entryFileNames: (chunkInfo) => (chunkInfo.name === 'content' ? 'content.js' : '[name].js')
+        entryFileNames: '[name].js'
       }
     }
   }

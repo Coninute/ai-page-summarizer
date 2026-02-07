@@ -7,8 +7,8 @@ const API_CONFIG = {
   useAPI: true,
   // API 地址（ModelScope API）
   apiUrl: 'https://api-inference.modelscope.cn/v1/chat/completions',
-  // API 密钥（ModelScope Token）
-  apiKey: 'ms-fdef09ef-0e3a-4e86-ab5e-53e7a5a1296c',
+  // API 密钥（ModelScope Token），需在设置中填写
+  apiKey: 'YOUR_API_KEY_HERE',
   // 模型名称
   model: 'deepseek-ai/DeepSeek-V3.2',
   // 是否启用思考过程
