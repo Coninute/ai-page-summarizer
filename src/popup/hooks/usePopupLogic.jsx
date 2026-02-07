@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { createApiConfig, loadSettingsFromStorage, saveSettingsToStorage, isValidApiKey } from '../services/settings';
+import { createApiConfig, loadSettingsFromStorage, saveSettingsToStorage, isValidApiKey, normalizeSummaryLength } from '../services/settings';
 import { mockSummarize, formatToMarkdown, callAPISummarize } from '../services/summarize';
 import { downloadMarkdown } from '../services/download';
 
@@ -340,7 +340,7 @@ export function usePopupLogic() {
   }
 
   async function onSaveSettings() {
-    const normalizedSummaryLength = parseInt(settingsState.summaryLength, 10) || 1000;
+    const normalizedSummaryLength = normalizeSummaryLength(settingsState.summaryLength);
     const newConfig = {
       ...apiConfig,
       apiKey: settingsState.apiKey.trim(),
