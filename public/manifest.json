@@ -3,17 +3,15 @@
   "name": "网页内容总结助手",
   "version": "1.0.0",
   "description": "一键总结当前网页内容并导出为 Markdown 文件",
-  "permissions": [
-    "activeTab",
-    "scripting",
-    "downloads",
-    "storage"
-  ],
-  "host_permissions": [
-    "https://api-inference.modelscope.cn/*"
-  ],
+  "permissions": ["activeTab", "scripting", "downloads", "storage"],
+  "host_permissions": ["https://api-inference.modelscope.cn/*"],
   "action": {
-    "default_popup": "index.html"
+    "default_popup": "index.html",
+    "default_icon": {
+      "16": "icon16.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    }
   },
   "content_scripts": [
     {
@@ -22,5 +20,9 @@
       "run_at": "document_idle"
     }
   ],
-  "icons": {}
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  }
 }

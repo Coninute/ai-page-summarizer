@@ -1,102 +1,99 @@
 ## 网页内容总结助手 Chrome 插件（React + Vite 版）
 
-一个基于 **React + Vite** 构建的 Manifest V3 Chrome 插件，可以一键总结当前网页内容并导出为 Markdown 文件，支持调用 **ModelScope + DeepSeek-V3.2** 或本地 mock 总结。
+基于 **React + Vite** 的 Manifest V3 Chrome 插件，可一键总结当前网页内容并导出为 Markdown，支持 **ModelScope + DeepSeek-V3.2** 或本地 mock 总结。
 
 ### 功能特点
 
-- **一键提取网页正文内容**
-- **支持选择任意元素进行总结（页面高亮选择模式）**
-- **智能生成总结 / 博客 / 文章 / 报告 / 要点列表**
+- **一键提取网页正文并总结**
+- **选择任意元素进行总结**（页面高亮选择模式）
+- **多种输出类型**：总结 / 博客 / 文章 / 报告 / 要点列表
 - **导出为 Markdown 文件**
-- **弹窗 UI 使用 React 组件 + 模块化服务层**
-- **遵循 Manifest V3 规范**
+- **设置持久化**：API Key、总结字数、内容类型等保存在 `chrome.storage.sync`，无后端
+- **Manifest V3**
 
-### 运行与构建（React + Vite）
+### 环境与构建
 
-1. 在项目根目录安装依赖：
-
-   ```bash
-   npm install
-   ```
-
-2. 打包构建（用于 Chrome 扩展）：
-
-   ```bash
-   npm run build
-   ```
-
-3. 构建完成后，会生成 `dist` 目录。  
-   **Chrome 扩展加载时请选择 `dist` 目录作为“已解压的扩展程序”根目录。**
-
-### 开发调试（可选）
-
-在开发阶段，如果你只想在普通浏览器窗口中调试 React 弹窗 UI（不依赖 Chrome 扩展环境），可以：
+**依赖安装**（任选其一）：
 
 ```bash
+pnpm install
+# 或
+npm install
+```
+
+**构建扩展**：
+
+```bash
+pnpm run build
+# 或
+npm run build
+```
+
+构建会执行两步：先打包 Popup（React），再单独打包 Content Script（IIFE）。产物在 **`dist`** 目录。  
+在 Chrome 中加载扩展时，请选择 **`dist`** 作为「加载已解压的扩展程序」的目录。
+
+**开发调试**（仅预览弹窗 UI，不跑扩展环境）：
+
+```bash
+pnpm run dev
+# 或
 npm run dev
 ```
 
-然后在浏览器中访问 Vite 给出的本地地址（通常是 `http://localhost:5173`），可以单独预览和调试弹窗界面与交互逻辑。
+浏览器访问 Vite 提供的地址（如 `http://localhost:5173`）即可调试弹窗界面。
 
-### 安装方法（开发者模式）
+### 安装步骤
 
-1. 先执行 `npm install && npm run build`
-2. 打开 Chrome，访问 `chrome://extensions/`
-3. 开启右上角的“开发者模式”
-4. 点击“加载已解压的扩展程序”
-5. 选择 `dist` 目录
+1. 在项目根目录执行：`pnpm install`（或 `npm install`），再执行 `pnpm run build`（或 `npm run build`）。
+2. 打开 Chrome，进入 `chrome://extensions/`，开启「开发者模式」。
+3. 点击「加载已解压的扩展程序」，选择项目下的 **`dist`** 目录。
+
+### 首次使用与设置
+
+1. 点击插件图标打开弹窗。
+2. 点击「设置」，在 **ModelScope API Key** 中填入你的 API Key 并保存（密钥仅存于本地，不会上传）。
+3. 未配置或密钥无效时，在总结前会提示「密钥未配置或不存在」或「密钥错误或已失效」，并自动打开设置页。
+4. 可在设置中调整 **总结字数**（100–8000）、内容类型、是否使用 API、是否启用思考过程等，修改后点击保存即可生效。
 
 ### 使用说明
 
-1. 在任意网页点击插件图标打开弹窗（React UI）
-2. 可选择：
-   - **“总结当前网页内容”**：自动提取正文并总结
-   - **“选择元素进行总结”**：进入页面高亮选择模式，点击任意元素进行总结
-3. 等待 AI 或本地 mock 生成总结
-4. 通过“预览选中内容 / 总结结果”在页面内查看弹窗
-5. 点击“下载为 .md 文件”保存到本地
+1. **总结当前网页**：在弹窗中点击「总结当前网页内容」，自动提取正文并调用 AI 或本地 mock 总结。
+2. **选择元素总结**：点击「选择元素进行总结」，在页面上高亮点击要总结的区块，再在弹窗中确认即可。
+3. 生成完成后可「预览总结结果」，或「下载为 .md 文件」保存。
 
-### 项目结构（简化）
+### 项目结构
 
 ```text
 .
 ├── public/
-│   ├── manifest.json     # 插件配置（构建时复制到 dist 使用）
-│   └── content.js        # 内容脚本（原生 JS，直接注入页面）
+│   └── manifest.json          # 扩展配置（构建时复制到 dist）
 ├── src/
+│   ├── content.js             # Content Script 源码（构建为 dist/content.js，IIFE）
+│   ├── main.jsx               # 弹窗入口
 │   └── popup/
-│       ├── PopupApp.jsx          # 弹窗根组件
-│       ├── components/           # UI 组件（Header、Buttons、SettingsModal、StatusBar 等）
-│       ├── hooks/usePopupLogic.jsx   # 业务状态与 Chrome API 调用
-│       ├── services/             # 总结、设置、下载等模块化服务
-│       └── styles.css            # 弹窗样式
-├── index.html            # 弹窗入口（由 Vite 处理）
-├── vite.config.js        # Vite 配置（React + 相对 base，输出 dist）
-├── package.json          # NPM 脚本与依赖
-├── .gitignore            # Git 忽略规则（dist、node_modules 等）
+│       ├── PopupApp.jsx       # 弹窗根组件
+│       ├── components/        # 弹窗 UI 组件
+│       ├── hooks/usePopupLogic.jsx
+│       ├── services/          # 总结、设置、下载等
+│       └── styles.css
+├── index.html                 # 弹窗页面（Vite 入口）
+├── vite.config.js             # Popup 构建配置（React，ESM）
+├── vite.content.config.js     # Content Script 构建配置（IIFE，无顶层 import）
+├── package.json
 └── README.md
 ```
 
-### Git 忽略说明
+- **为何两个 Vite 配置？** Popup 以 `type="module"` 加载，可用 ESM；Content Script 由 Chrome 按普通脚本注入，不能含顶层 `import`，故用 `vite.content.config.js` 将 `src/content.js` 打成单文件 IIFE。
 
-仓库内已添加 `.gitignore` 文件，主要规则包括：
+### 技术要点
 
-- **不提交依赖与构建产物**：忽略 `node_modules/`、`dist/`
-- **不提交本地环境和编辑器文件**：忽略 `.vscode/`、`.idea/`、`.DS_Store`、日志文件等
-- **预留环境变量支持**：默认忽略 `.env` 及 `.env.*.local`，如果后续你要把 API Key 放到环境变量，可以直接复用这些规则
+- **UI**：React 函数组件 + 自定义 Hook。
+- **总结**：`chrome.scripting.executeScript` 取正文；Content Script 负责元素选择与页面内预览；ModelScope Chat Completions（DeepSeek-V3.2）或本地 `mockSummarize`。
+- **配置**：`chrome.storage.sync` 持久化 API Key、总结字数、内容类型等；设置页修改后立即写入，总结时读取并生效。
 
-### 技术实现概览
+### 版本
 
-- **UI 层**：React 函数组件 + 自定义 Hook 管理状态
-- **业务逻辑**：
-  - 通过 `chrome.scripting.executeScript` 提取整页正文
-  - 通过 `content.js` + `chrome.runtime.sendMessage` 实现元素选择和页面级弹窗预览
-  - 使用 ModelScope Chat Completions + DeepSeek-V3.2 或本地 `mockSummarize`
-- **数据与配置**：
-  - 使用 `chrome.storage.sync` 持久化 API Key、总结长度、内容类型等
-  - 模块化拆分为 `settings`、`summarize`、`download` 等服务
+- 插件版本：1.0.0  
+- Manifest：3  
 
-### 版本信息
-
-- **插件版本**：1.0.0
-- **Manifest 版本**：3
+更多 API 说明见 **MODELSCOPE_API.md**。
