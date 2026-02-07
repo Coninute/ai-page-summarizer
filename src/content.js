@@ -1,5 +1,4 @@
-// 注意：该文件是从项目根目录的 content.js 拷贝过来的，用于在 Vite 构建后一起输出到 dist。
-// 如果需要修改内容脚本逻辑，请以此文件为准，并同步更新根目录版本（或删除根目录版本以避免混淆）。
+import { marked } from 'marked';
 
 console.log('网页内容总结助手已加载');
 
@@ -477,6 +476,21 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   return true;
 });
 
+function lockPageScroll() {
+  document.body.style.overflow = 'hidden';
+  document.documentElement.style.overflow = 'hidden';
+}
+
+function tryUnlockPageScroll() {
+  const selectedOpen = pageSelectedModal && pageSelectedModal.style.display === 'flex';
+  const summaryOpen = pageSummaryModal && pageSummaryModal.style.display === 'flex';
+  const settingsOpen = pageSettingsModal && pageSettingsModal.style.display === 'flex';
+  if (!selectedOpen && !summaryOpen && !settingsOpen) {
+    document.body.style.overflow = '';
+    document.documentElement.style.overflow = '';
+  }
+}
+
 function createPageModals() {
   if (pageSelectedModal && pageSummaryModal && pageSettingsModal) return;
   try {
@@ -509,10 +523,12 @@ function createPageModals() {
         .querySelector('#web-summarizer-close-selected-modal')
         .addEventListener('click', () => {
           pageSelectedModal.style.display = 'none';
+          tryUnlockPageScroll();
         });
       pageSelectedModal.addEventListener('click', (e) => {
         if (e.target === pageSelectedModal) {
           pageSelectedModal.style.display = 'none';
+          tryUnlockPageScroll();
         }
       });
     }
@@ -538,7 +554,7 @@ function createPageModals() {
             <span style="font-size: 16px; font-weight: 600; color: white;">总结结果预览</span>
             <span id="web-summarizer-close-summary-modal" style="font-size: 24px; color: rgba(255, 255, 255, 0.9); cursor: pointer; line-height: 1; user-select: none;">&times;</span>
           </div>
-          <div id="web-summarizer-summary-content" style="padding: 20px; max-height: calc(80vh - 70px); overflow-y: auto; font-size: 14px; color: #555; line-height: 1.6; word-wrap: break-word; white-space: pre-wrap; font-family: 'Consolas', 'Monaco', 'Courier New', monospace;"></div>
+          <div id="web-summarizer-summary-content" class="web-summarizer-md-body" style="padding: 20px; max-height: calc(80vh - 70px); overflow-y: auto; font-size: 14px; color: #555; line-height: 1.6; word-wrap: break-word;"></div>
         </div>
       `;
       document.body.appendChild(pageSummaryModal);
@@ -546,10 +562,12 @@ function createPageModals() {
         .querySelector('#web-summarizer-close-summary-modal')
         .addEventListener('click', () => {
           pageSummaryModal.style.display = 'none';
+          tryUnlockPageScroll();
         });
       pageSummaryModal.addEventListener('click', (e) => {
         if (e.target === pageSummaryModal) {
           pageSummaryModal.style.display = 'none';
+          tryUnlockPageScroll();
         }
       });
     }
@@ -623,10 +641,12 @@ function createPageModals() {
         .querySelector('#web-summarizer-close-settings-modal')
         .addEventListener('click', () => {
           pageSettingsModal.style.display = 'none';
+          tryUnlockPageScroll();
         });
       pageSettingsModal.addEventListener('click', (e) => {
         if (e.target === pageSettingsModal) {
           pageSettingsModal.style.display = 'none';
+          tryUnlockPageScroll();
         }
       });
       const settingsForm = pageSettingsModal.querySelector('#web-summarizer-settings-form');
@@ -638,6 +658,7 @@ function createPageModals() {
         .querySelector('#web-summarizer-cancel-settings')
         .addEventListener('click', () => {
           pageSettingsModal.style.display = 'none';
+          tryUnlockPageScroll();
         });
       loadPageSettings();
     }
@@ -654,6 +675,7 @@ function showPageSelectedModal(content) {
       contentEl.textContent = content || '暂无内容';
     }
     pageSelectedModal.style.display = 'flex';
+    lockPageScroll();
   } catch (error) {
     console.error('显示选中的内容弹窗失败:', error);
   }
@@ -662,14 +684,38 @@ function showPageSelectedModal(content) {
 function showPageSummaryModal(content) {
   try {
     createPageModals();
+    injectSummaryMarkdownStyles();
     const contentEl = document.getElementById('web-summarizer-summary-content');
     if (contentEl) {
-      contentEl.textContent = content || '暂无内容';
+      contentEl.innerHTML = marked.parse(content || '暂无内容');
     }
     pageSummaryModal.style.display = 'flex';
+    lockPageScroll();
   } catch (error) {
     console.error('显示总结结果弹窗失败:', error);
   }
+}
+
+function injectSummaryMarkdownStyles() {
+  if (document.getElementById('web-summarizer-md-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'web-summarizer-md-styles';
+  style.textContent = `
+    .web-summarizer-md-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    .web-summarizer-md-body p { margin: 0 0 0.75em; }
+    .web-summarizer-md-body p:last-child { margin-bottom: 0; }
+    .web-summarizer-md-body h1 { font-size: 1.35em; margin: 0.8em 0 0.4em; font-weight: 600; color: #333; }
+    .web-summarizer-md-body h2 { font-size: 1.2em; margin: 0.7em 0 0.35em; font-weight: 600; color: #333; }
+    .web-summarizer-md-body h3 { font-size: 1.05em; margin: 0.6em 0 0.3em; font-weight: 600; color: #444; }
+    .web-summarizer-md-body ul, .web-summarizer-md-body ol { margin: 0.5em 0; padding-left: 1.5em; }
+    .web-summarizer-md-body li { margin: 0.25em 0; }
+    .web-summarizer-md-body pre { background: #f5f5f5; border-radius: 6px; padding: 12px; overflow-x: auto; margin: 0.5em 0; font-size: 13px; }
+    .web-summarizer-md-body code { background: #f0f0f0; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; font-family: Consolas, Monaco, monospace; }
+    .web-summarizer-md-body pre code { background: none; padding: 0; }
+    .web-summarizer-md-body a { color: #64b5f6; text-decoration: none; }
+    .web-summarizer-md-body a:hover { text-decoration: underline; }
+  `;
+  document.head.appendChild(style);
 }
 
 function loadPageSettings() {
@@ -720,6 +766,7 @@ function savePageSettings() {
   chrome.storage.sync.set(settings, () => {
     if (pageSettingsModal) {
       pageSettingsModal.style.display = 'none';
+      tryUnlockPageScroll();
     }
     createStatusBox();
     updateStatusBox('设置已保存', 'success');
@@ -732,6 +779,7 @@ function showPageSettingsModal() {
     createPageModals();
     loadPageSettings();
     pageSettingsModal.style.display = 'flex';
+    lockPageScroll();
   } catch (error) {
     console.error('显示设置弹窗失败:', error);
   }

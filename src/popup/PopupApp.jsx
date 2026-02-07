@@ -1,6 +1,7 @@
 import React from 'react';
 import { PopupHeader } from './components/PopupHeader';
 import { PopupButtons } from './components/PopupButtons';
+import { PreviewModal } from './components/PreviewModal';
 import { SettingsModal } from './components/SettingsModal';
 import { StatusBar } from './components/StatusBar';
 import { usePopupLogic } from './hooks/usePopupLogic';
@@ -31,6 +32,14 @@ export function PopupApp() {
       />
 
       <StatusBar status={status} />
+
+      <PreviewModal
+        isOpen={modals.summaryPreviewOpen}
+        title="总结结果预览"
+        content={modals.summaryResult}
+        markdown
+        onClose={handlers.onCloseSummaryPreview}
+      />
 
       <SettingsModal
         isOpen={modals.settingsOpen}

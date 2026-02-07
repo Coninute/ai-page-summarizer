@@ -1,3 +1,4 @@
+import path from 'path';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
@@ -9,9 +10,12 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     rollupOptions: {
-      // 入口页面，仅用于 popup
       input: {
-        popup: 'index.html'
+        popup: 'index.html',
+        content: path.resolve(__dirname, 'src/content.js')
+      },
+      output: {
+        entryFileNames: (chunkInfo) => (chunkInfo.name === 'content' ? 'content.js' : '[name].js')
       }
     }
   }

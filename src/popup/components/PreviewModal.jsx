@@ -1,4 +1,6 @@
 import React from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 export function PreviewModal({ isOpen, title, content, markdown = false, onClose }) {
   if (!isOpen) return null;
@@ -14,11 +16,16 @@ export function PreviewModal({ isOpen, title, content, markdown = false, onClose
         </div>
         <div className="modal-body">
           <div className={`modal-text ${markdown ? 'markdown-content' : ''}`}>
-            {content || '暂无内容'}
+            {markdown ? (
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {content || '暂无内容'}
+              </ReactMarkdown>
+            ) : (
+              (content || '暂无内容')
+            )}
           </div>
         </div>
       </div>
     </div>
   );
 }
-

@@ -278,6 +278,7 @@ export function usePopupLogic() {
   }
 
   async function onPreviewSummary() {
+    if (!summaryResult) return;
     try {
       const tab = await getActiveTab();
       await chrome.tabs.sendMessage(tab.id, {
@@ -285,7 +286,6 @@ export function usePopupLogic() {
         content: summaryResult
       });
     } catch {
-      // 回退：在 popup 内部展示预览
       setSummaryPreviewOpen(true);
     }
   }
